@@ -112,20 +112,20 @@
 
     /* SVG workflow diagram (desktop); stacked .wf version shows on mobile */
     .wf-svg { width: 100%; height: auto; display: block; margin: 20px 0; }
-    .wfd-box { fill: var(--bg-card); stroke: var(--border); stroke-width: 1.5; }
+    .wfd-box { fill: #fdfeff; stroke: #6d94bf; stroke-width: 2; }
     .wfd-io { fill: transparent; stroke-dasharray: 6 4; }
-    .wfd-lane-v { fill: rgba(14, 165, 233, 0.06); stroke: rgba(3, 105, 161, 0.35); stroke-dasharray: 6 4; stroke-width: 1.5; }
-    .wfd-lane-t { fill: rgba(139, 92, 246, 0.06); stroke: rgba(124, 58, 237, 0.35); stroke-dasharray: 6 4; stroke-width: 1.5; }
-    .wfd-q { fill: var(--bg-card); stroke: var(--accent-2); stroke-dasharray: 6 4; stroke-width: 1.5; }
-    .wfd-answer { fill: rgba(5, 150, 105, 0.08); stroke: rgba(5, 150, 105, 0.5); stroke-width: 1.5; }
-    .wfd-stage { font-family: var(--mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; fill: var(--accent); }
-    .wfd-stage-t { fill: var(--accent-2); }
-    .wfd-main { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 700; fill: var(--text); }
-    .wfd-sub { font-family: "Inter", sans-serif; font-size: 12.5px; fill: var(--text-dim); }
-    .wfd-label { font-family: var(--mono); font-size: 11.5px; fill: var(--text-dim); }
-    .wfd-flow { stroke: var(--accent); stroke-width: 2; fill: none; marker-end: url(#wfArr); }
-    .wfd-flow-t { stroke: var(--accent-2); stroke-width: 2; fill: none; marker-end: url(#wfArrT); }
-    .wfd-qflow { stroke: var(--accent-2); stroke-width: 2; stroke-dasharray: 6 5; fill: none; marker-end: url(#wfArrT); }
+    .wfd-lane-v { fill: rgba(14, 165, 233, 0.09); stroke: rgba(3, 105, 161, 0.6); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-lane-t { fill: rgba(139, 92, 246, 0.09); stroke: rgba(124, 58, 237, 0.6); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-q { fill: #fdfeff; stroke: var(--accent-2); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-answer { fill: rgba(5, 150, 105, 0.10); stroke: rgba(5, 150, 105, 0.7); stroke-width: 2; }
+    .wfd-stage { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; fill: #055585; }
+    .wfd-stage-t { fill: #6d28d9; }
+    .wfd-main { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 700; fill: #0d1730; }
+    .wfd-sub { font-family: "Inter", sans-serif; font-size: 13px; font-weight: 500; fill: #2c3d63; }
+    .wfd-label { font-family: var(--mono); font-size: 12px; font-weight: 600; fill: #274468; }
+    .wfd-flow { stroke: #045a8c; stroke-width: 2.5; fill: none; marker-end: url(#wfArr); }
+    .wfd-flow-t { stroke: #6d28d9; stroke-width: 2.5; fill: none; marker-end: url(#wfArrT); }
+    .wfd-qflow { stroke: #6d28d9; stroke-width: 2.5; stroke-dasharray: 6 5; fill: none; marker-end: url(#wfArrT); }
     @media (min-width: 721px) { .wf { display: none; } }
     @media (max-width: 720px) { .wf-svg { display: none; } }
 
@@ -220,10 +220,10 @@
       <svg class="wf-svg" viewBox="0 0 920 1040" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FinDocIQ pipeline workflow diagram">
         <defs>
           <marker id="wfArr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill="#0369a1"/>
+            <path d="M0,0 L10,5 L0,10 z" fill="#045a8c"/>
           </marker>
           <marker id="wfArrT" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+            <path d="M0,0 L10,5 L0,10 z" fill="#6d28d9"/>
           </marker>
         </defs>
 
@@ -452,12 +452,17 @@
       <h3>Stage 2 — Dual indexing (ColQwen2.5 + BGE-small → Qdrant)</h3>
       <p>Embedded on a Kaggle P100 GPU kernel (fp16, batch size 1):</p>
       <ul>
-        <li><strong>Visual lane:</strong> 75 pages × <strong>755 patch vectors × 128-d</strong> each (late-interaction multivector, Qdrant MAX_SIM comparator) — ~19&nbsp;MB of fp16 artifacts shipped back instead of the 7.5&nbsp;GB model.</li>
-        <li><strong>Text lane:</strong> 75 × <strong>384-d</strong> BGE-small dense vectors (cosine).</li>
+        <li><strong>Visual lane:</strong> ColQwen2.5 (<code>vidore/colqwen2.5-v0.2</code>) — 75 pages × <strong>755 patch vectors × 128-d</strong> each (late-interaction multivector, Qdrant MAX_SIM comparator) — ~19&nbsp;MB of fp16 artifacts shipped back instead of the 7.5&nbsp;GB model.</li>
+        <li><strong>Text lane:</strong> BGE-small (<code>BAAI/bge-small-en-v1.5</code>) — 75 × <strong>384-d</strong> dense vectors (cosine), embedded on CPU.</li>
         <li>One sparse cover page produced NaN patch vectors from fp16 overflow — sanitized to zeros (a zero vector can never win MAX_SIM, so this is lossless for ranking).</li>
       </ul>
 
       <h3>Stage 3 — Hybrid retrieval (the money stage)</h3>
+      <p>
+        Each lane returns its top-15 candidates (<code>fetch_k&nbsp;=&nbsp;15</code>); Reciprocal
+        Rank Fusion (<code>k&nbsp;=&nbsp;60</code>) merges the two ranked lists and keeps the
+        top&nbsp;5 (<code>top_k&nbsp;=&nbsp;5</code>) for generation.
+      </p>
       <p>
         <strong>Query:</strong> <em>"What were Berkshire's insurance-underwriting earnings in 2024,
         and how do they compare to 2023?"</em> — gold page <strong>p5</strong> (the earnings
@@ -479,7 +484,7 @@
         and ranks p5 first by a wide margin; fusion keeps it at rank&nbsp;1.
       </p>
       <p>
-        The fusion insurance works in <strong>both directions</strong>. For <em>"How much does the
+        The same insurance works in <strong>both directions</strong>. For <em>"How much does the
         EIA expect US marketed natural gas production to grow in 2026?"</em> (gold p13), the visual
         lane ranks a wrong chart page p25 first (24.21 vs 23.98 — nearly tied); the text lane ranks
         p13 first decisively (0.811 vs 0.756), and fusion restores p13 to rank&nbsp;1. Neither lane
@@ -511,6 +516,12 @@
       </p>
 
       <h3>Stage 5 — Evaluation (10 gold-annotated questions, full corpus)</h3>
+      <p>
+        Retrieval is scored exactly against hand-annotated gold pages (hit@k, MRR); answer quality
+        is scored by Gemini 2.5 Flash-Lite — deliberately a <strong>different model</strong> from
+        the generator — on separate 1–5 faithfulness and relevance rubrics, with the gold answer
+        in the judge prompt.
+      </p>
       <div class="cs-table-wrap">
         <table class="cs-table">
           <thead><tr><th>Metric</th><th>Score</th></tr></thead>
@@ -529,7 +540,8 @@
         below right). The gold page is a wall of small numbers with almost no distinguishing text
         or visual structure; both lanes rank the WTI <em>price chart</em> page p17 (below left)
         above it. That's the known hard case for page-level retrieval — the fix is
-        table-cell-level indexing (extract tables → index rows), the top roadmap item.
+        table-aware indexing (extract tables → index rows/cells), the first item in the
+        Next-level solution below.
       </p>
       <div class="cs-figs">
         <figure class="cs-fig">
@@ -557,44 +569,113 @@
     <section class="cs-section reveal">
       <h2><span class="section-num">04</span> Engineering Problems Actually Hit (and Fixed)</h2>
       <div class="cs-story">
-        <h4>1 · 7.5 GB model vs. a throttled connection</h4>
-        <p>ColQwen2.5 downloads kept stalling locally. Instead of fighting it, I inverted the
-        architecture: run embedding <strong>where the model already is</strong> (a Kaggle GPU
-        kernel) and ship back only ~19 MB of embedding artifacts. The model never needs to reach
-        the serving machine.</p>
+        <h4>1 · fp16 numerical overflow silently poisoned an embedding</h4>
+        <p>After switching the encoder from bf16 to fp16 (see problem 2), exactly 1 page out of 75
+        came back as 755 patch vectors of pure <code>NaN</code> — and Qdrant rejects NaN payloads at
+        insert time, so the whole indexing run died. bf16 and fp16 both use 16 bits, but bf16 keeps
+        float32's exponent range (~10<sup>38</sup>) while fp16 caps at 65,504; one intermediate
+        activation overflowed to <code>inf</code>, and <code>inf − inf</code> in the following
+        normalization produced NaN that propagated through every downstream value. Diagnosis:
+        dumped per-page <code>isnan()</code> counts, isolated the page — a near-blank cover with
+        almost no visual signal. Fix: <code>nan_to_num</code> sanitization to zero vectors, which is
+        provably safe under MAX_SIM ranking — a zero vector's dot product with any query embedding
+        is 0, so a blank page can never outrank a real one.</p>
       </div>
       <div class="cs-story">
-        <h4>2 · Kaggle API kernels always get a P100 (compute capability 6.0)</h4>
-        <p>Current PyTorch wheels dropped Pascal support (<code>CUDA error: no kernel image</code>).
-        Fix: the kernel self-detects <code>get_device_capability() &lt; (7,0)</code>, installs
-        torch 2.5.1+cu121 + colpali-engine 0.3.9 + transformers&lt;5, and re-execs itself. fp16
-        instead of bf16 (no bf16 on Pascal), batch size 1 (the fp16 model alone is 8.5 GB of the
-        16 GB card).</p>
+        <h4>2 · Running a 3B late-interaction VLM on a 2016 GPU (compute capability 6.0)</h4>
+        <p>The free GPU I could get programmatically was a Kaggle P100 — Pascal architecture,
+        which has <strong>no bf16 hardware support</strong> and is no longer compiled into current
+        PyTorch wheels (<code>CUDA error: no kernel image is available for execution on the
+        device</code>). ColQwen2.5's reference setup assumes bf16 on Ampere or newer. The pipeline
+        had to become hardware-adaptive: the kernel reads
+        <code>torch.cuda.get_device_capability()</code> at runtime, and below (7,0) it pins a
+        Pascal-compatible stack (torch 2.5.1+cu121, colpali-engine 0.3.9) and re-executes itself
+        via <code>os.execv</code> so the new versions are actually the ones imported. Memory math
+        forced the rest: the fp16 weights alone are 8.5 GB of the 16 GB card, and one page yields
+        755 × 128 patch vectors plus activations — so batch size 1 with cache eviction between
+        pages. Same code still runs bf16/batched on a modern GPU; the P100 path costs ~2 min for
+        75 pages.</p>
       </div>
       <div class="cs-story">
-        <h4>3 · fp16 overflow → NaN embeddings</h4>
-        <p>1 of 75 pages produced NaN patch vectors; Qdrant rejects NaN. Diagnosed to a near-blank
-        cover page, sanitized to zeros — harmless under MAX_SIM ranking.</p>
+        <h4>3 · Fusing two retrievers whose scores live on incomparable scales</h4>
+        <p>The visual lane scores with late-interaction MAX_SIM — an <em>unbounded sum</em> over
+        ~30 query token maxima that landed anywhere from 20 to 30 depending on query length — while
+        the text lane returns cosine similarity in [0, 1]. Min-max normalizing 15 candidates per
+        lane makes the result hostage to each lane's outliers: one freak top score compresses every
+        other candidate toward 0, and the same page gets wildly different normalized scores on
+        different queries. I dropped scores entirely and fused in <em>rank space</em> with
+        Reciprocal Rank Fusion (<code>score = Σ 1/(60 + rank)</code>, fetch_k = 15 per lane,
+        top_k = 5 out). The eval shows the fusion earning its keep in both directions: on the
+        insurance-float question the text lane ranks the wrong page first (0.778 vs 0.767) but the
+        visual lane's decisive margin (MAX_SIM 29.47) holds page 5 at rank 1; on the natural-gas
+        question the visual lane is the one that's wrong (24.21 vs 23.98) and the text lane
+        (cosine 0.811) pulls page 13 back to the top. Neither lane alone gets both questions right.</p>
       </div>
       <div class="cs-story">
-        <h4>4 · Free-tier quota engineering</h4>
-        <p>Gemini free keys allow ~20 requests/day per model per project. The eval needs 20 calls
-        (10 answers + 10 judgments) — split across two models (Flash generates, Flash-Lite judges,
-        which independently reduces self-grading bias), with 429-aware retry/backoff and
-        per-question progress checkpointing so a mid-run failure never loses completed work.</p>
+        <h4>4 · A retrieval failure signature no embedding tweak can fix</h4>
+        <p>Both hit@1 misses in the eval share one signature: the question asks for a
+        <em>single number inside a dense quarterly statistics table</em> (gold: page 34), and both
+        lanes — visual and text — instead rank a chart page (17) that summarizes the same variable
+        first. That's not a bug in either encoder; it's a granularity mismatch. A page-level
+        embedding of a 40-row table dilutes any individual cell into an average of everything
+        around it, while a chart page about the same topic is semantically "denser" for the query
+        terms. Fusion can't rescue you when both lanes agree on the wrong page. I kept the failure
+        in the report deliberately — knowing the boundary of your architecture is the point of
+        evaluating it — and it directly motivates the first item in the next-level solution below.</p>
       </div>
       <div class="cs-story">
-        <h4>5 · Secrets never leave the machine</h4>
-        <p>The Kaggle kernel does GPU-only work; all Gemini calls run locally, so no API key is
-        ever bundled into an uploadable artifact.</p>
+        <h4>5 · Making an LLM judge trustworthy under a ~20-requests/day quota</h4>
+        <p>Two separate problems hide in "just have an LLM grade the answers." First, integrity:
+        if the same model generates and grades, scores inherit self-grading bias — so Gemini 2.5
+        Flash answers and Flash-Lite judges, with the judge given the gold answer and scoring
+        faithfulness and relevance on separate 1–5 rubrics rather than one vague "quality" number.
+        Second, feasibility: free-tier keys allow roughly 20 requests/day per model per project,
+        and the eval needs exactly 10 generations + 10 judgments. That leaves a budget of
+        <em>zero</em> wasted calls, so the eval loop is idempotent — every completed
+        answer/judgment is checkpointed to disk immediately, reruns skip finished questions, and
+        429 responses trigger exponential backoff instead of a crash that would burn the day's
+        quota. A judge run that dies at question 9 resumes at question 9.</p>
+      </div>
+      <div class="cs-story">
+        <h4>6 · Decoupling GPU compute from serving with a 19 MB artifact contract</h4>
+        <p>The heavy model (7.5 GB ColQwen2.5) and the serving machine never need to meet. The
+        Kaggle kernel's only output is a versioned artifact — <code>embeddings.npz</code> +
+        manifest, ~19 MB for 75 pages — and the local indexer treats it as a contract: it
+        derives Qdrant point IDs as <code>uuid5(doc_id, page_number)</code>, so re-running
+        ingestion is idempotent (same page always maps to the same point, re-uploads overwrite
+        instead of duplicating) and embeddings can be regenerated on any GPU without touching the
+        serving stack. Side benefit: the API key for generation never leaves the local machine,
+        because the remote kernel only ever does embedding math.</p>
       </div>
 
-      <h3>What I'd build next</h3>
+      <h3>Next-level solution</h3>
+      <p class="section-intro" style="margin-bottom:18px">What separates this prototype from a
+      production document-intelligence system — each item targets a measured limitation, not a
+      hypothetical one.</p>
       <ul>
-        <li><strong>Table-cell-level indexing</strong> to fix the dense-table hit@1 misses (the only failure mode found).</li>
-        <li>Scale eval past 10 questions with synthetic QA generation + human spot-checks.</li>
-        <li>Qdrant binary quantization for the multivectors (755 × 128 fp16 per page gets expensive at 10K+ pages).</li>
-        <li>Swap the judge to a stronger paid model for calibration once budget allows.</li>
+        <li><strong>Table-aware indexing.</strong> Extract tables at parse time and index
+        row/cell-level granules alongside page-level vectors, then route numeric "what was X in
+        Q3" queries to the fine-grained index. Directly attacks the only failure mode the eval
+        found (both misses were dense-table lookups losing to chart pages).</li>
+        <li><strong>Reranking stage after fusion.</strong> RRF discards score magnitude by design;
+        a cross-encoder reranker over the top-15 fused candidates re-reads the actual page content
+        against the query and would likely recover the p34-vs-p17 confusions without touching the
+        indexes.</li>
+        <li><strong>Multivector compression for scale.</strong> 755 × 128 fp16 vectors ≈ 189 KB
+        per page — fine at 75 pages, untenable at 100K. Binary quantization plus two-stage
+        retrieval (mean-pooled single-vector recall, then exact MAX_SIM rescoring on the
+        shortlist) cuts storage ~32× with minimal ranking loss.</li>
+        <li><strong>Eval at scale, stratified by page type.</strong> 10 hand-written questions
+        prove the pipeline; they can't measure it. Generate synthetic QA pairs stratified across
+        prose, table, and chart pages (with human spot-checks), so per-page-type hit rates expose
+        exactly where retrieval degrades.</li>
+        <li><strong>Query-adaptive lane weighting.</strong> Today both lanes vote equally in RRF.
+        A lightweight query router (is this visual, numeric, or textual intent?) can weight the
+        lanes per query — e.g. trust the text lane more on verbatim-phrase questions, the visual
+        lane on chart questions.</li>
+        <li><strong>Production hardening.</strong> Streamed token-by-token answers, retrieved-page
+        image caching, request tracing, and retrieval-quality dashboards (rank distributions,
+        per-lane agreement rate) so drift is visible before users report it.</li>
       </ul>
 
       <div class="project-links" style="margin-top:34px">
