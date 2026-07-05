@@ -1,8 +1,8 @@
 :root {
-  --bg: #f6f8fc;
-  --bg-card: #ffffff;
-  --bg-card-hover: #eef3fb;
-  --border: #d9e2f0;
+  --bg: #e8f1fa;
+  --bg-card: #f6faff;
+  --bg-card-hover: #e0edf9;
+  --border: #c5d9ec;
   --text: #16213a;
   --text-dim: #46557a;
   --accent: #0369a1;
@@ -38,7 +38,7 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 100;
-  background: rgba(246, 248, 252, 0.88);
+  background: rgba(232, 241, 250, 0.88);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
