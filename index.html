@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usama — AI Engineer</title>
+  <meta name="description" content="AI Engineer specializing in RAG systems, agentic AI, and LLM fine-tuning. Building production-grade LLM pipelines." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#top" class="logo">usama<span class="accent">.ai</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+      <ul class="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#skills">Skills</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <p class="hero-kicker">// AI ENGINEER</p>
+      <h1>I build <span class="gradient-text">production-grade</span><br />LLM systems.</h1>
+      <p class="hero-sub">
+        Specializing in <strong>multimodal RAG</strong>, <strong>agentic AI</strong>, and
+        <strong>LLM fine-tuning</strong> — end-to-end pipelines from data ingestion to
+        deployed, monitored inference.
+      </p>
+      <div class="hero-cta">
+        <a href="#projects" class="btn btn-primary">View Projects</a>
+        <a href="#contact" class="btn btn-ghost">Get in Touch</a>
+      </div>
+      <div class="hero-badges">
+        <span class="chip">RAG</span>
+        <span class="chip">Agentic AI</span>
+        <span class="chip">Fine-tuning</span>
+        <span class="chip">LLMOps</span>
+        <span class="chip">MLOps</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="about" class="section reveal">
+      <h2><span class="section-num">01</span> About</h2>
+      <div class="about-grid">
+        <p>
+          <!-- TODO: Replace with your own bio -->
+          I'm an AI engineer focused on taking large language models beyond demos and into
+          production. My work spans the full lifecycle: data pipelines, retrieval systems,
+          model fine-tuning, evaluation, deployment, and observability. I also bring domain
+          expertise in financial markets, having built automated trading systems for forex
+          and commodities.
+        </p>
+        <ul class="about-facts">
+          <li><span class="fact-label">Focus</span> LLM systems engineering</li>
+          <li><span class="fact-label">Stack</span> Python · PyTorch · LangGraph · FastAPI</li>
+          <li><span class="fact-label">Domain</span> Finance &amp; trading systems</li>
+          <li><span class="fact-label">Open to</span> Freelance &amp; full-time roles</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="projects" class="section reveal">
+      <h2><span class="section-num">02</span> Featured Projects</h2>
+      <p class="section-intro">
+        Full product-scale systems with multi-stage pipelines — not notebook demos.
+      </p>
+
+      <article class="project project-featured">
+        <div class="project-header">
+          <span class="project-tag tag-live">FEATURED</span>
+          <span class="project-tag">Multimodal RAG</span>
+        </div>
+        <h3>FinDocIQ — Multimodal Financial Document Intelligence</h3>
+        <p>
+          Ask questions over annual reports, broker research, and economic outlooks — including
+          the charts and tables that text-only RAG can't see. Uses ColQwen2.5 late-interaction
+          visual retrieval over document page images, fused with hybrid text search, and a
+          vision-language model for cited answer generation.
+        </p>
+        <div class="pipeline">
+          <span class="stage">Ingestion</span>
+          <span class="stage">Dual Indexing</span>
+          <span class="stage">Hybrid Retrieval</span>
+          <span class="stage">VLM Generation</span>
+          <span class="stage">Evaluation</span>
+          <span class="stage">Deployment</span>
+        </div>
+        <div class="project-stack">
+          <span>ColQwen2.5</span><span>Qdrant</span><span>Docling</span><span>FastAPI</span>
+          <span>RAGAS</span><span>Langfuse</span><span>Docker</span>
+        </div>
+        <div class="project-links">
+          <!-- TODO: add your repo / demo links -->
+          <a href="#" class="link-btn">GitHub ↗</a>
+          <a href="#" class="link-btn">Live Demo ↗</a>
+        </div>
+      </article>
+
+      <div class="project-grid">
+        <article class="project">
+          <div class="project-header">
+            <span class="project-tag tag-wip">IN PROGRESS</span>
+            <span class="project-tag">Agentic AI</span>
+          </div>
+          <h3>Agentic Research Assistant</h3>
+          <p>
+            Multi-agent system with a LangGraph planning agent, query rewriting, HyDE, and
+            hybrid vector + knowledge-graph retrieval. Observability and evaluation built in.
+          </p>
+          <div class="project-stack">
+            <span>LangGraph</span><span>Neo4j</span><span>Qdrant</span><span>Opik</span>
+          </div>
+        </article>
+
+        <article class="project">
+          <div class="project-header">
+            <span class="project-tag tag-wip">IN PROGRESS</span>
+            <span class="project-tag">Fine-tuning</span>
+          </div>
+          <h3>Domain-Tuned LLM Pipeline</h3>
+          <p>
+            End-to-end fine-tuning system: instruction dataset generation, LoRA/QLoRA training
+            with Unsloth, experiment tracking, model registry, and serverless deployment.
+          </p>
+          <div class="project-stack">
+            <span>Unsloth</span><span>LoRA</span><span>Comet ML</span><span>Hugging Face</span>
+          </div>
+        </article>
+
+        <article class="project">
+          <div class="project-header">
+            <span class="project-tag tag-live">DEPLOYED</span>
+            <span class="project-tag">Automation</span>
+          </div>
+          <h3>Automated Trading Systems</h3>
+          <p>
+            <!-- TODO: adjust to describe your actual bots -->
+            Custom forex and oil trading bots with signal pipelines, risk management, and
+            live broker execution.
+          </p>
+          <div class="project-stack">
+            <span>Python</span><span>MetaTrader</span><span>Pandas</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="skills" class="section reveal">
+      <h2><span class="section-num">03</span> Skills</h2>
+      <div class="skills-grid">
+        <div class="skill-group">
+          <h4>LLM Engineering</h4>
+          <p>RAG architectures · Multimodal retrieval (ColPali/ColQwen) · Agentic workflows · Prompt engineering · Fine-tuning (LoRA, QLoRA, DPO)</p>
+        </div>
+        <div class="skill-group">
+          <h4>Frameworks</h4>
+          <p>LangChain · LangGraph · Hugging Face · PyTorch · Unsloth · smolagents · FastAPI</p>
+        </div>
+        <div class="skill-group">
+          <h4>Data &amp; Infra</h4>
+          <p>Qdrant · Neo4j · MongoDB · Docker · AWS · CI/CD · vLLM</p>
+        </div>
+        <div class="skill-group">
+          <h4>LLMOps</h4>
+          <p>RAGAS · Opik · Langfuse · Comet ML · experiment tracking · model registries · monitoring</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="section reveal">
+      <h2><span class="section-num">04</span> Contact</h2>
+      <p class="section-intro">Open to AI engineering roles and freelance projects.</p>
+      <div class="contact-links">
+        <a href="mailto:c2740014@gmail.com" class="btn btn-primary">Email Me</a>
+        <!-- TODO: replace # with your actual profiles -->
+        <a href="#" class="btn btn-ghost">GitHub</a>
+        <a href="#" class="btn btn-ghost">LinkedIn</a>
+        <a href="#" class="btn btn-ghost">Upwork</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Usama · Built with plain HTML/CSS — no framework needed.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
