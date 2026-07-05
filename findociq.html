@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinDocIQ — Case Study &amp; Live Demo | Usama — AI Engineer</title>
+  <meta name="description" content="FinDocIQ engineering case study: multimodal financial document RAG with ColQwen2.5 visual retrieval, hybrid fusion, VLM generation, and a live demo — real output from every pipeline stage." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ---------- Case-study page ---------- */
+    .cs-hero {
+      padding: 140px 24px 30px;
+      background:
+        radial-gradient(ellipse 60% 45% at 70% 15%, rgba(56, 189, 248, 0.10), transparent),
+        radial-gradient(ellipse 50% 40% at 25% 80%, rgba(167, 139, 250, 0.08), transparent);
+    }
+    .cs-hero-inner { max-width: 900px; margin: 0 auto; }
+    .cs-hero h1 { font-size: clamp(1.8rem, 4.5vw, 2.8rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin: 14px 0 16px; }
+    .cs-hero .hero-sub { max-width: 700px; }
+    .cs-section { max-width: 900px; margin: 0 auto; padding: 44px 24px; }
+    .cs-section h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 18px; letter-spacing: -0.01em; }
+    .cs-section h3 { font-size: 1.1rem; font-weight: 700; margin: 30px 0 12px; color: var(--text); }
+    .cs-section p, .cs-section li { color: var(--text-dim); font-size: 0.97rem; }
+    .cs-section ul, .cs-section ol { padding-left: 22px; display: grid; gap: 8px; margin: 12px 0; }
+    .cs-section strong { color: var(--text); }
+    .cs-section a { color: var(--accent); }
+
+    .cs-metrics { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
+    .cs-metric {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 22px; text-align: center; min-width: 110px;
+    }
+    .cs-metric .val { display: block; font-family: var(--mono); font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .cs-metric .lbl { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-top: 2px; }
+
+    .cs-table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--border); border-radius: var(--radius); }
+    table.cs-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: var(--bg-card); }
+    .cs-table th {
+      font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--accent); text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border);
+      background: rgba(56, 189, 248, 0.05); white-space: nowrap;
+    }
+    .cs-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: top; }
+    .cs-table tr:last-child td { border-bottom: none; }
+    .cs-table td strong { color: var(--text); }
+    .cs-hit { color: #34d399; font-weight: 600; }
+    .cs-miss { color: #f87171; font-weight: 600; }
+
+    .cs-quote {
+      border-left: 3px solid var(--accent); background: var(--bg-card);
+      border-radius: 0 var(--radius) var(--radius) 0; padding: 16px 20px; margin: 16px 0;
+      color: var(--text); font-size: 0.95rem;
+    }
+    .cs-quote cite { display: block; margin-top: 8px; font-style: normal; font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); }
+
+    .cs-figs { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0; }
+    .cs-fig { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+    .cs-fig img { width: 100%; border-radius: 8px; display: block; }
+    .cs-fig figcaption { font-family: var(--mono); font-size: 0.74rem; color: var(--text-dim); margin-top: 10px; line-height: 1.5; }
+
+    .cs-demo-frame {
+      width: 100%; height: 780px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); margin-top: 18px;
+    }
+    .cs-demo-note { font-size: 0.82rem; color: var(--text-dim); margin-top: 10px; font-family: var(--mono); }
+
+    .cs-story { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin: 14px 0; }
+    .cs-story h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+    .cs-story p { font-size: 0.92rem; }
+
+    .cs-back { display: inline-block; margin-bottom: 8px; font-family: var(--mono); font-size: 0.85rem; color: var(--accent); text-decoration: none; }
+    .cs-back:hover { text-decoration: underline; }
+
+    @media (max-width: 720px) {
+      .cs-figs { grid-template-columns: 1fr; }
+      .cs-demo-frame { height: 640px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">usama<span class="accent">.ai</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+      <ul class="nav-links">
+        <li><a href="index.html#about">About</a></li>
+        <li><a href="index.html#projects">Projects</a></li>
+        <li><a href="#demo">Live Demo</a></li>
+        <li><a href="#case-study">Case Study</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <header class="cs-hero">
+    <div class="cs-hero-inner">
+      <a href="index.html#projects" class="cs-back">← Back to projects</a>
+      <div class="project-header">
+        <span class="project-tag tag-live">DEPLOYED</span>
+        <span class="project-tag">Multimodal RAG</span>
+      </div>
+      <h1>FinDocIQ — Multimodal Financial <span class="gradient-text">Document Intelligence</span></h1>
+      <p class="hero-sub">
+        Ask questions over annual reports and economic outlooks — <strong>including the charts and
+        tables that text-only RAG can't see</strong>. Pages are retrieved as images with ColQwen2.5
+        late-interaction embeddings, fused with dense text search, and answered by a
+        vision-language model that cites the exact pages it used.
+      </p>
+      <div class="pipeline" style="margin-top:26px">
+        <span class="stage">Ingestion</span>
+        <span class="stage">Dual Indexing</span>
+        <span class="stage">Hybrid Retrieval</span>
+        <span class="stage">VLM Generation</span>
+        <span class="stage">Evaluation</span>
+        <span class="stage">Deployment</span>
+      </div>
+      <div class="cs-metrics">
+        <div class="cs-metric"><span class="val">0.80</span><span class="lbl">hit@1</span></div>
+        <div class="cs-metric"><span class="val">0.90</span><span class="lbl">hit@5</span></div>
+        <div class="cs-metric"><span class="val">0.83</span><span class="lbl">MRR</span></div>
+        <div class="cs-metric"><span class="val">5.0<span style="font-size:0.9rem">/5</span></span><span class="lbl">Faithfulness</span></div>
+        <div class="cs-metric"><span class="val">5.0<span style="font-size:0.9rem">/5</span></span><span class="lbl">Relevance</span></div>
+      </div>
+      <div class="project-links" style="margin-top:28px">
+        <a href="#demo" class="link-btn">Try the Live Demo ↓</a>
+        <a href="#case-study" class="link-btn">Read the Case Study ↓</a>
+        <a href="https://github.com/usamahassan965/findociq" target="_blank" rel="noopener" class="link-btn">Source on GitHub ↗</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="demo" class="cs-section reveal">
+      <h2><span class="section-num">01</span> Live Demo</h2>
+      <p>
+        Running below on a free Hugging Face Space over a real 75-page corpus (Berkshire Hathaway
+        2024 shareholder letter + EIA Short-Term Energy Outlook). Ask a question — the app shows
+        the answer with page citations and the actual retrieved page images.
+      </p>
+      <iframe
+        class="cs-demo-frame"
+        src="https://usamahassan965-findociq-demo.hf.space"
+        title="FinDocIQ live demo"
+        loading="lazy"
+        allow="clipboard-write"></iframe>
+      <p class="cs-demo-note">
+        Free-tier Space — first load may take ~30s to wake up.
+        <a href="https://usamahassan965-findociq-demo.hf.space" target="_blank" rel="noopener">Open full-screen ↗</a>
+      </p>
+    </section>
+
+    <section id="case-study" class="cs-section reveal">
+      <h2><span class="section-num">02</span> Engineering Case Study</h2>
+      <p style="font-style:italic">
+        The problem, the options weighed at each stage, and real output from every stage of the
+        pipeline. Every number on this page is an actual captured artifact, reproducible from the
+        <a href="https://github.com/usamahassan965/findociq" target="_blank" rel="noopener">repo</a> —
+        nothing is illustrative.
+      </p>
+
+      <h3>The problem</h3>
+      <p>
+        Financial documents are dominated by <strong>charts and tables</strong>. A text-only RAG
+        pipeline OCRs the PDF, chunks the text, and destroys exactly the content the questions are
+        about — a quarterly price table or a production-growth chart doesn't survive chunking.
+        The goal: a QA system that retrieves document <strong>pages as images</strong> and answers
+        while actually <em>looking</em> at them — under hard constraints: <strong>no local GPU</strong>
+        and <strong>zero budget</strong> (every component free-tier or open-weights).
+      </p>
+
+      <h3>Design decisions — options considered vs. chosen</h3>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Stage</th><th>Options considered</th><th>Chosen</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Page rendering</strong></td><td>OCR + chunking; Unstructured.io; pypdfium2 page→PNG</td><td>pypdfium2</td><td>Keeps visual layout; also extracts raw text for the second lane; zero cost</td></tr>
+            <tr><td><strong>Visual retrieval</strong></td><td>CLIP page embeddings (single vector); ColQwen2.5 late interaction (ColPali); caption-then-embed</td><td>ColQwen2.5</td><td>Single-vector CLIP collapses a whole page into one point — late interaction keeps ~755 patch vectors per page, so a query token can match one table-cell region</td></tr>
+            <tr><td><strong>Text retrieval</strong></td><td>BM25; OpenAI embeddings (paid); BGE-small-en-v1.5</td><td>BGE-small</td><td>Open weights, 384-d, runs on CPU; complements the visual lane on prose questions</td></tr>
+            <tr><td><strong>Fusion</strong></td><td>Score normalization + weighted sum; learned reranker; Reciprocal Rank Fusion (k=60)</td><td>RRF</td><td>MAX_SIM (~20–30) and cosine (~0.6–0.8) live on incomparable scales; RRF is scale-free and needs no training data</td></tr>
+            <tr><td><strong>Vector DB</strong></td><td>FAISS (no server, no payloads); pgvector; Qdrant</td><td>Qdrant</td><td>Native multivector MAX_SIM support + payload storage + free local Docker / 1&nbsp;GB cloud tier</td></tr>
+            <tr><td><strong>Generation</strong></td><td>OCR text → text LLM; page images → VLM; Ollama qwen2.5-vl (local fallback)</td><td>Gemini 2.5 Flash (VLM)</td><td>The model answers from the rendered page, so table/chart questions work; free tier</td></tr>
+            <tr><td><strong>Evaluation</strong></td><td>Vibes; RAGAS; hit@k / MRR on gold pages + LLM-judge</td><td>Custom</td><td>Page-level gold labels make retrieval metrics exact; judging on a <em>different</em> model (Flash-Lite) reduces self-grading bias</td></tr>
+            <tr><td><strong>GPU for indexing</strong></td><td>Colab (session limits); Modal (credit card); Kaggle API kernels</td><td>Kaggle</td><td>Scriptable push/status/output CLI → fully automated remote embedding job</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Stage 1 — Ingestion (pypdfium2)</h3>
+      <p>
+        75 pages rendered to PNG (~990×1290 / 1020×1320&nbsp;px) + raw text per page + metadata
+        (<code>doc_name</code>, <code>page_number</code>, <code>page_id</code> like
+        <code>berkshire_2024_letter::p5</code>).
+      </p>
+
+      <h3>Stage 2 — Dual indexing (ColQwen2.5 + BGE-small → Qdrant)</h3>
+      <p>Embedded on a Kaggle P100 GPU kernel (fp16, batch size 1):</p>
+      <ul>
+        <li><strong>Visual lane:</strong> 75 pages × <strong>755 patch vectors × 128-d</strong> each (late-interaction multivector, Qdrant MAX_SIM comparator) — ~19&nbsp;MB of fp16 artifacts shipped back instead of the 7.5&nbsp;GB model.</li>
+        <li><strong>Text lane:</strong> 75 × <strong>384-d</strong> BGE-small dense vectors (cosine).</li>
+        <li>One sparse cover page produced NaN patch vectors from fp16 overflow — sanitized to zeros (a zero vector can never win MAX_SIM, so this is lossless for ranking).</li>
+      </ul>
+
+      <h3>Stage 3 — Hybrid retrieval (the money stage)</h3>
+      <p>
+        <strong>Query:</strong> <em>"What were Berkshire's insurance-underwriting earnings in 2024,
+        and how do they compare to 2023?"</em> — gold page <strong>p5</strong> (the earnings
+        breakdown table).
+      </p>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Rank</th><th>Visual lane (MAX_SIM)</th><th>Text lane (cosine)</th><th>RRF fused</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><strong>p5</strong> (29.47) <span class="cs-hit">✓</span></td><td>p4 (0.778) <span class="cs-miss">✗</span></td><td><strong>p5</strong> <span class="cs-hit">✓</span></td></tr>
+            <tr><td>2</td><td>p4 (25.42)</td><td><strong>p5</strong> (0.767)</td><td>p4</td></tr>
+            <tr><td>3</td><td>p10 (23.07)</td><td>p10 (0.688)</td><td>p10</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The text lane ranks the prose page p4 first — the extracted text of the table page scores
+        lower than the surrounding narrative. The <strong>visual lane sees the table itself</strong>
+        and ranks p5 first by a wide margin; fusion keeps it at rank&nbsp;1.
+      </p>
+      <p>
+        The fusion insurance works in <strong>both directions</strong>. For <em>"How much does the
+        EIA expect US marketed natural gas production to grow in 2026?"</em> (gold p13), the visual
+        lane ranks a wrong chart page p25 first (24.21 vs 23.98 — nearly tied); the text lane ranks
+        p13 first decisively (0.811 vs 0.756), and fusion restores p13 to rank&nbsp;1. Neither lane
+        alone gets both questions right — <strong>the hybrid gets both</strong>.
+      </p>
+      <div class="cs-figs">
+        <figure class="cs-fig">
+          <img src="assets/findociq/berkshire_2024_letter_p5.jpg" alt="Berkshire 2024 letter page 5 — earnings breakdown table" loading="lazy" />
+          <figcaption>Retrieved gold page (visual lane won): Berkshire p5 — the earnings table the text lane under-ranked.</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <img src="assets/findociq/eia_short_term_energy_outlook_p13.jpg" alt="EIA STEO page 13 — natural gas production" loading="lazy" />
+          <figcaption>Lane-flip case (text lane won): EIA p13 — natural gas production, restored to rank 1 by RRF.</figcaption>
+        </figure>
+      </div>
+
+      <h3>Stage 4 — VLM generation (page images → Gemini 2.5 Flash)</h3>
+      <p>Top-5 fused page <strong>images</strong> go to the VLM with a citation-forcing prompt. Actual output:</p>
+      <blockquote class="cs-quote">
+        "Berkshire's insurance-underwriting earnings in 2024 were $9,020 million. This is an
+        increase compared to 2023, when they were $5,428 million
+        <strong>[berkshire_2024_letter p.5]</strong>."
+        <cite>— verbatim model output; both figures come from the table on p5, which a text-only pipeline never had intact</cite>
+      </blockquote>
+      <p>
+        The model also declines correctly: asked for a number the retrieved pages don't contain, it
+        answered <em>"The provided document pages do not contain the forecast WTI spot price for
+        Q2 2026"</em> instead of hallucinating one — and that answer still scored faithfulness 5/5.
+      </p>
+
+      <h3>Stage 5 — Evaluation (10 gold-annotated questions, full corpus)</h3>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Metric</th><th>Score</th></tr></thead>
+          <tbody>
+            <tr><td>hit@1</td><td><strong>0.80</strong></td></tr>
+            <tr><td>hit@5</td><td><strong>0.90</strong></td></tr>
+            <tr><td>MRR</td><td><strong>0.83</strong></td></tr>
+            <tr><td>Faithfulness (LLM-judge, 1–5)</td><td><strong>5.0</strong></td></tr>
+            <tr><td>Relevance (LLM-judge, 1–5)</td><td><strong>5.0</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <strong>Failure analysis</strong> — both hit@1 misses have the same shape:
+        quarterly-statistics-table lookups (e.g. <em>"WTI spot price for Q2 2026"</em>, gold p34
+        below right). The gold page is a wall of small numbers with almost no distinguishing text
+        or visual structure; both lanes rank the WTI <em>price chart</em> page p17 (below left)
+        above it. That's the known hard case for page-level retrieval — the fix is
+        table-cell-level indexing (extract tables → index rows), the top roadmap item.
+      </p>
+      <div class="cs-figs">
+        <figure class="cs-fig">
+          <img src="assets/findociq/eia_short_term_energy_outlook_p17.jpg" alt="EIA STEO page 17 — WTI price chart" loading="lazy" />
+          <figcaption>What both lanes retrieved: EIA p17, the WTI price chart.</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <img src="assets/findociq/eia_short_term_energy_outlook_p34.jpg" alt="EIA STEO page 34 — dense quarterly statistics table" loading="lazy" />
+          <figcaption>What the gold answer needed: EIA p34, a dense quarterly table with no distinguishing structure.</figcaption>
+        </figure>
+      </div>
+      <p>
+        Per-question raw results:
+        <a href="https://github.com/usamahassan965/findociq/blob/main/results/eval_results.json" target="_blank" rel="noopener">results/eval_results.json</a>.
+      </p>
+
+      <h3>Stage 6 — Serving</h3>
+      <p>
+        FastAPI REST API + Streamlit chat UI (shows the retrieved page images alongside the
+        answer) + Docker Compose locally; the public demo above runs as a Docker Space on
+        Hugging Face.
+      </p>
+    </section>
+
+    <section class="cs-section reveal">
+      <h2><span class="section-num">03</span> Engineering Problems Actually Hit (and Fixed)</h2>
+      <div class="cs-story">
+        <h4>1 · 7.5 GB model vs. a throttled connection</h4>
+        <p>ColQwen2.5 downloads kept stalling locally. Instead of fighting it, I inverted the
+        architecture: run embedding <strong>where the model already is</strong> (a Kaggle GPU
+        kernel) and ship back only ~19 MB of embedding artifacts. The model never needs to reach
+        the serving machine.</p>
+      </div>
+      <div class="cs-story">
+        <h4>2 · Kaggle API kernels always get a P100 (compute capability 6.0)</h4>
+        <p>Current PyTorch wheels dropped Pascal support (<code>CUDA error: no kernel image</code>).
+        Fix: the kernel self-detects <code>get_device_capability() &lt; (7,0)</code>, installs
+        torch 2.5.1+cu121 + colpali-engine 0.3.9 + transformers&lt;5, and re-execs itself. fp16
+        instead of bf16 (no bf16 on Pascal), batch size 1 (the fp16 model alone is 8.5 GB of the
+        16 GB card).</p>
+      </div>
+      <div class="cs-story">
+        <h4>3 · fp16 overflow → NaN embeddings</h4>
+        <p>1 of 75 pages produced NaN patch vectors; Qdrant rejects NaN. Diagnosed to a near-blank
+        cover page, sanitized to zeros — harmless under MAX_SIM ranking.</p>
+      </div>
+      <div class="cs-story">
+        <h4>4 · Free-tier quota engineering</h4>
+        <p>Gemini free keys allow ~20 requests/day per model per project. The eval needs 20 calls
+        (10 answers + 10 judgments) — split across two models (Flash generates, Flash-Lite judges,
+        which independently reduces self-grading bias), with 429-aware retry/backoff and
+        per-question progress checkpointing so a mid-run failure never loses completed work.</p>
+      </div>
+      <div class="cs-story">
+        <h4>5 · Secrets never leave the machine</h4>
+        <p>The Kaggle kernel does GPU-only work; all Gemini calls run locally, so no API key is
+        ever bundled into an uploadable artifact.</p>
+      </div>
+
+      <h3>What I'd build next</h3>
+      <ul>
+        <li><strong>Table-cell-level indexing</strong> to fix the dense-table hit@1 misses (the only failure mode found).</li>
+        <li>Scale eval past 10 questions with synthetic QA generation + human spot-checks.</li>
+        <li>Qdrant binary quantization for the multivectors (755 × 128 fp16 per page gets expensive at 10K+ pages).</li>
+        <li>Swap the judge to a stronger paid model for calibration once budget allows.</li>
+      </ul>
+
+      <div class="project-links" style="margin-top:34px">
+        <a href="https://github.com/usamahassan965/findociq" target="_blank" rel="noopener" class="link-btn">Source on GitHub ↗</a>
+        <a href="#demo" class="link-btn">Back to the Demo ↑</a>
+        <a href="index.html#projects" class="link-btn">← All Projects</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Usama · Built with plain HTML/CSS — no framework needed.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
