@@ -523,6 +523,68 @@
           </tbody>
         </table>
       </div>
+
+      <h3>Ablation — does the hybrid actually earn its keep?</h3>
+      <p>
+        Same 10 questions, three retrieval configurations. The per-lane rankings were already
+        captured, so this cost <strong>zero extra API calls</strong>
+        (<a href="https://github.com/usamahassan965/findociq/blob/main/scripts/analyze_eval.py" target="_blank" rel="noopener">scripts/analyze_eval.py</a>):
+      </p>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Retrieval config</th><th>hit@1</th><th>hit@5</th><th>MRR</th></tr></thead>
+          <tbody>
+            <tr><td>Visual lane only (ColQwen2.5)</td><td>0.70</td><td>0.90</td><td>0.78</td></tr>
+            <tr><td>Text lane only (BGE-small)</td><td>0.60</td><td>0.90</td><td>0.75</td></tr>
+            <tr><td><strong>Hybrid (RRF fusion)</strong></td><td><strong>0.80</strong></td><td><strong>0.90</strong></td><td><strong>0.83</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The fused ranking matched or beat the better single lane on <strong>9 of 10</strong>
+        questions, rescuing 2 text-lane misses and 1 visual-lane miss. The two questions the
+        hybrid still misses are exactly the ones where <em>both</em> lanes rank the wrong page —
+        fusion can't outvote a unanimous mistake.
+      </p>
+
+      <h3>Stratified hit@1 — where retrieval degrades</h3>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Question type</th><th>n</th><th>Hybrid</th><th>Visual only</th><th>Text only</th></tr></thead>
+          <tbody>
+            <tr><td>Prose / narrative</td><td>6</td><td><strong>1.00</strong></td><td>0.83</td><td>0.83</td></tr>
+            <tr><td>Numeric table lookup</td><td>4</td><td><strong>0.50</strong></td><td>0.50</td><td>0.25</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The aggregate 0.80 hides the real story: retrieval is <strong>perfect on prose</strong>
+        and coin-flip on dense-table lookups — which is why table-aware indexing leads the
+        next-level solution.
+      </p>
+
+      <h3>Answer quality — objective checks beyond the LLM judge</h3>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Metric</th><th>Score</th></tr></thead>
+          <tbody>
+            <tr><td>Numeric exact-match (reference key figure present in answer)</td><td><strong>8/8</strong> answered numeric questions</td></tr>
+            <tr><td>Citation precision (cited pages that are gold pages)</td><td><strong>1.00</strong></td></tr>
+            <tr><td>Gold page cited in the answer</td><td><strong>1.00</strong></td></tr>
+            <tr><td>Hallucinations when the gold page wasn't retrieved</td><td><strong>0 / 1</strong> (model refused instead)</td></tr>
+            <tr><td>False refusals on answerable questions</td><td><strong>0 / 9</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Financial answers are numbers, so correctness is checked by <em>parsing</em>, not by
+        another LLM: every answered question contains the reference answer's key figure verbatim.
+        The refusal matrix is the grounding proof — one question's gold page never reached the
+        model, and it said so instead of reading a plausible number off the nearest chart. All
+        of this is computed post-hoc from saved artifacts:
+        <a href="https://github.com/usamahassan965/findociq/blob/main/results/metrics_extended.json" target="_blank" rel="noopener">results/metrics_extended.json</a>.
+      </p>
+
       <p>
         <strong>Failure analysis</strong> — both hit@1 misses have the same shape:
         quarterly-statistics-table lookups (e.g. <em>"WTI spot price for Q2 2026"</em>, gold p34
@@ -551,7 +613,9 @@
       <p>
         FastAPI REST API + Streamlit chat UI (shows the retrieved page images alongside the
         answer) + Docker Compose locally; the public demo above runs as a Docker Space on
-        Hugging Face.
+        Hugging Face. Answers <strong>stream token-by-token</strong>, and every response carries
+        per-stage latency (retrieval ms · time-to-first-token · full answer) — the API returns
+        the same timings in JSON and exposes a <code>/query/stream</code> endpoint.
       </p>
     </section>
 
@@ -666,9 +730,10 @@
         A lightweight query router (is this visual, numeric, or textual intent?) can weight the
         lanes per query — e.g. trust the text lane more on verbatim-phrase questions, the visual
         lane on chart questions.</li>
-        <li><strong>Production hardening.</strong> Streamed token-by-token answers, retrieved-page
-        image caching, request tracing, and retrieval-quality dashboards (rank distributions,
-        per-lane agreement rate) so drift is visible before users report it.</li>
+        <li><strong>Production hardening.</strong> Token-by-token streaming and per-stage latency
+        instrumentation are now shipped (UI + API); still ahead: retrieved-page image caching,
+        request tracing, and retrieval-quality dashboards (rank distributions, per-lane agreement
+        rate) so drift is visible before users report it.</li>
       </ul>
 
       <div class="project-links" style="margin-top:34px">
