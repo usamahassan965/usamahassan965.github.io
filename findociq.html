@@ -112,12 +112,13 @@
 
     /* SVG workflow diagram (desktop); stacked .wf version shows on mobile */
     .wf-svg { width: 100%; height: auto; display: block; margin: 20px 0; }
-    .wfd-box { fill: #fdfeff; stroke: #6d94bf; stroke-width: 2; }
-    .wfd-io { fill: transparent; stroke-dasharray: 6 4; }
-    .wfd-lane-v { fill: rgba(14, 165, 233, 0.09); stroke: rgba(3, 105, 161, 0.6); stroke-dasharray: 6 4; stroke-width: 2; }
-    .wfd-lane-t { fill: rgba(139, 92, 246, 0.09); stroke: rgba(124, 58, 237, 0.6); stroke-dasharray: 6 4; stroke-width: 2; }
-    .wfd-q { fill: #fdfeff; stroke: var(--accent-2); stroke-dasharray: 6 4; stroke-width: 2; }
-    .wfd-answer { fill: rgba(5, 150, 105, 0.10); stroke: rgba(5, 150, 105, 0.7); stroke-width: 2; }
+    .wfd-frame { fill: rgba(14, 165, 233, 0.04); stroke: #34557e; stroke-width: 2.5; }
+    .wfd-box { fill: #c9def2; stroke: #3f6b99; stroke-width: 2; }
+    .wfd-io { fill: #d8e9f8; stroke-dasharray: 6 4; }
+    .wfd-lane-v { fill: rgba(14, 165, 233, 0.14); stroke: rgba(3, 105, 161, 0.7); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-lane-t { fill: rgba(139, 92, 246, 0.14); stroke: rgba(124, 58, 237, 0.7); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-q { fill: #e4dbf8; stroke: var(--accent-2); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-answer { fill: rgba(5, 150, 105, 0.18); stroke: rgba(4, 120, 87, 0.85); stroke-width: 2; }
     .wfd-stage { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; fill: #055585; }
     .wfd-stage-t { fill: #6d28d9; }
     .wfd-main { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 700; fill: #0d1730; }
@@ -217,7 +218,7 @@
         at query time. The key idea: the fused top-5 pages reach the vision model as
         <strong>images</strong>, not extracted text.
       </p>
-      <svg class="wf-svg" viewBox="0 0 920 856" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FinDocIQ pipeline workflow diagram">
+      <svg class="wf-svg" viewBox="0 0 920 868" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FinDocIQ pipeline workflow diagram">
         <defs>
           <marker id="wfArr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="#045a8c"/>
@@ -226,6 +227,9 @@
             <path d="M0,0 L10,5 L0,10 z" fill="#6d28d9"/>
           </marker>
         </defs>
+
+        <!-- outer boundary -->
+        <rect x="4" y="4" width="912" height="856" rx="18" class="wfd-frame"/>
 
         <!-- legend -->
         <line x1="40" y1="24" x2="78" y2="24" class="wfd-flow"/>
@@ -552,37 +556,22 @@
     </section>
 
     <section class="cs-section reveal">
-      <h2><span class="section-num">04</span> Engineering Problems Actually Hit (and Fixed)</h2>
+      <h2><span class="section-num">04</span> Hard Problems (Ask Me About These)</h2>
       <div class="cs-story">
-        <h4>1 · fp16 numerical overflow silently poisoned an embedding</h4>
-        <p>After switching the encoder from bf16 to fp16 (see problem 2), exactly 1 page out of 75
-        came back as 755 patch vectors of pure <code>NaN</code> — and Qdrant rejects NaN payloads at
-        insert time, so the whole indexing run died. bf16 and fp16 both use 16 bits, but bf16 keeps
-        float32's exponent range (~10<sup>38</sup>) while fp16 caps at 65,504; one intermediate
-        activation overflowed to <code>inf</code>, and <code>inf − inf</code> in the following
-        normalization produced NaN that propagated through every downstream value. Diagnosis:
-        dumped per-page <code>isnan()</code> counts, isolated the page — a near-blank cover with
-        almost no visual signal. Fix: <code>nan_to_num</code> sanitization to zero vectors, which is
-        provably safe under MAX_SIM ranking — a zero vector's dot product with any query embedding
-        is 0, so a blank page can never outrank a real one.</p>
+        <h4>1 · The answer is one cell in a 40-row table — and every retriever walks past it</h4>
+        <p>The hardest question type in the corpus: <em>"What is the forecast WTI spot price for
+        Q2 2026?"</em> The answer is a single number inside a dense quarterly statistics table
+        (page 34), and <strong>both</strong> lanes — visual and text — rank a WTI <em>chart</em>
+        page (17) above it. That's not a bug in either encoder; it's a granularity mismatch baked
+        into page-level retrieval. A page-level embedding of a 40-row table dilutes any individual
+        cell into an average of everything around it, while a chart about the same topic is
+        semantically "denser" for the query terms. Fusion can't rescue you when both voters agree
+        on the wrong page. I kept the failure in the report deliberately — knowing the exact
+        boundary of your architecture is the point of evaluating it — and it drives the first item
+        in the next-level solution below.</p>
       </div>
       <div class="cs-story">
-        <h4>2 · Running a 3B late-interaction VLM on a 2016 GPU (compute capability 6.0)</h4>
-        <p>The free GPU I could get programmatically was a Kaggle P100 — Pascal architecture,
-        which has <strong>no bf16 hardware support</strong> and is no longer compiled into current
-        PyTorch wheels (<code>CUDA error: no kernel image is available for execution on the
-        device</code>). ColQwen2.5's reference setup assumes bf16 on Ampere or newer. The pipeline
-        had to become hardware-adaptive: the kernel reads
-        <code>torch.cuda.get_device_capability()</code> at runtime, and below (7,0) it pins a
-        Pascal-compatible stack (torch 2.5.1+cu121, colpali-engine 0.3.9) and re-executes itself
-        via <code>os.execv</code> so the new versions are actually the ones imported. Memory math
-        forced the rest: the fp16 weights alone are 8.5 GB of the 16 GB card, and one page yields
-        755 × 128 patch vectors plus activations — so batch size 1 with cache eviction between
-        pages. Same code still runs bf16/batched on a modern GPU; the P100 path costs ~2 min for
-        75 pages.</p>
-      </div>
-      <div class="cs-story">
-        <h4>3 · Fusing two retrievers whose scores live on incomparable scales</h4>
+        <h4>2 · Two retrievers, two incomparable scoring universes</h4>
         <p>The visual lane scores with late-interaction MAX_SIM — an <em>unbounded sum</em> over
         ~30 query token maxima that landed anywhere from 20 to 30 depending on query length — while
         the text lane returns cosine similarity in [0, 1]. Min-max normalizing 15 candidates per
@@ -591,25 +580,55 @@
         different queries. I dropped scores entirely and fused in <em>rank space</em> with
         Reciprocal Rank Fusion (<code>score = Σ 1/(60 + rank)</code>, fetch_k = 15 per lane,
         top_k = 5 out). The eval shows the fusion earning its keep in both directions: on the
-        insurance-float question the text lane ranks the wrong page first (0.778 vs 0.767) but the
+        insurance question the text lane ranks the wrong page first (0.778 vs 0.767) but the
         visual lane's decisive margin (MAX_SIM 29.47) holds page 5 at rank 1; on the natural-gas
         question the visual lane is the one that's wrong (24.21 vs 23.98) and the text lane
         (cosine 0.811) pulls page 13 back to the top. Neither lane alone gets both questions right.</p>
       </div>
       <div class="cs-story">
-        <h4>4 · A retrieval failure signature no embedding tweak can fix</h4>
-        <p>Both hit@1 misses in the eval share one signature: the question asks for a
-        <em>single number inside a dense quarterly statistics table</em> (gold: page 34), and both
-        lanes — visual and text — instead rank a chart page (17) that summarizes the same variable
-        first. That's not a bug in either encoder; it's a granularity mismatch. A page-level
-        embedding of a 40-row table dilutes any individual cell into an average of everything
-        around it, while a chart page about the same topic is semantically "denser" for the query
-        terms. Fusion can't rescue you when both lanes agree on the wrong page. I kept the failure
-        in the report deliberately — knowing the boundary of your architecture is the point of
-        evaluating it — and it directly motivates the first item in the next-level solution below.</p>
+        <h4>3 · One NaN embedding took down the entire index</h4>
+        <p>Running the encoder in fp16 (forced by a 2016-era Pascal GPU with no bf16 hardware
+        support), exactly 1 page out of 75 came back as 755 patch vectors of pure <code>NaN</code> —
+        and Qdrant rejects NaN payloads at insert time, so the whole indexing run died. bf16 and
+        fp16 both use 16 bits, but bf16 keeps float32's exponent range (~10<sup>38</sup>) while
+        fp16 caps at 65,504; one intermediate activation overflowed to <code>inf</code>, and
+        <code>inf − inf</code> in the following normalization produced NaN that propagated through
+        every downstream value. Diagnosis: dumped per-page <code>isnan()</code> counts, isolated
+        the page — a near-blank cover with almost no visual signal. Fix: <code>nan_to_num</code>
+        sanitization to zero vectors, which is provably safe under MAX_SIM ranking — a zero
+        vector's dot product with any query embedding is 0, so a blank page can never outrank a
+        real one.</p>
       </div>
       <div class="cs-story">
-        <h4>5 · Making an LLM judge trustworthy under a ~20-requests/day quota</h4>
+        <h4>4 · The index was born on a GPU the serving machine will never have</h4>
+        <p>Embedding a page means pushing it through a 3B-parameter vision model — GPU work. But
+        the demo serves from a free CPU-only container, and the 7.5 GB model can't ride along.
+        The way out is an asymmetry worth noticing: a <em>page</em> costs 755 patch vectors
+        through the full VLM, but a <em>query</em> is only ~30 token vectors — orders of magnitude
+        lighter. So all page embeddings are computed offline on a borrowed GPU (a Kaggle kernel)
+        and shipped as a versioned ~19 MB artifact (<code>embeddings.npz</code> + manifest);
+        serving only ever pays the cheap query-side cost. The indexer treats the artifact as a
+        contract: Qdrant point IDs derive as <code>uuid5(doc_id, page_number)</code>, so
+        re-ingestion is idempotent (re-uploads overwrite instead of duplicating) and embeddings
+        can be regenerated on any GPU without touching the serving stack — the classic
+        train-time/serve-time split, applied to retrieval.</p>
+      </div>
+      <div class="cs-story">
+        <h4>5 · Getting a vision model to say "I don't know"</h4>
+        <p>A VLM looking at five financial pages will happily <em>read a number off the nearest
+        chart</em> when the exact figure the user asked for isn't there — the most dangerous
+        failure mode in a finance context, because the answer looks plausible and cites a real
+        page. Two defenses: retrieval shows its work (the UI displays the actual retrieved page
+        images next to the answer, so a wrong number is visually checkable), and the generation
+        prompt forces a per-claim <code>[doc p.N]</code> citation and an explicit refusal path
+        when the retrieved pages don't contain the answer. Measured result: asked for the WTI
+        Q2 2026 forecast when retrieval had surfaced the chart page instead of the statistics
+        table, the model answered <em>"The provided document pages do not contain the forecast
+        WTI spot price for Q2 2026"</em> — a correct refusal that still scored faithfulness 5/5,
+        instead of a confident wrong number.</p>
+      </div>
+      <div class="cs-story">
+        <h4>6 · An evaluation you can trust on 20 API calls a day</h4>
         <p>Two separate problems hide in "just have an LLM grade the answers." First, integrity:
         if the same model generates and grades, scores inherit self-grading bias — so Gemini 2.5
         Flash answers and Flash-Lite judges, with the judge given the gold answer and scoring
@@ -620,17 +639,6 @@
         answer/judgment is checkpointed to disk immediately, reruns skip finished questions, and
         429 responses trigger exponential backoff instead of a crash that would burn the day's
         quota. A judge run that dies at question 9 resumes at question 9.</p>
-      </div>
-      <div class="cs-story">
-        <h4>6 · Decoupling GPU compute from serving with a 19 MB artifact contract</h4>
-        <p>The heavy model (7.5 GB ColQwen2.5) and the serving machine never need to meet. The
-        Kaggle kernel's only output is a versioned artifact — <code>embeddings.npz</code> +
-        manifest, ~19 MB for 75 pages — and the local indexer treats it as a contract: it
-        derives Qdrant point IDs as <code>uuid5(doc_id, page_number)</code>, so re-running
-        ingestion is idempotent (same page always maps to the same point, re-uploads overwrite
-        instead of duplicating) and embeddings can be regenerated on any GPU without touching the
-        serving stack. Side benefit: the API key for generation never leaves the local machine,
-        because the remote kernel only ever does embedding math.</p>
       </div>
 
       <h3>Next-level solution</h3>
