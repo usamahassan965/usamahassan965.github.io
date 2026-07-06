@@ -326,7 +326,7 @@
         <div class="wf-node">
           <span class="wf-stage">Stage 1 · Ingestion</span>
           <span class="wf-what">pypdfium2</span>
-          <span class="wf-how">each page → PNG image (~1000×1300 px) + raw text + metadata (doc, page number, page_id)</span>
+          <span class="wf-how">each page → image + text</span>
         </div>
         <div class="wf-arrow">page image &nbsp;+&nbsp; page text — one copy to each lane</div>
         <div class="wf-lanes">
@@ -335,13 +335,13 @@
             <div class="wf-node">
               <span class="wf-stage">Stage 2a · Visual embedding</span>
               <span class="wf-what">ColQwen2.5 (late interaction)</span>
-              <span class="wf-how">755 patch vectors × 128-d per page · fp16 · embedded on a Kaggle P100 GPU</span>
+              <span class="wf-how">755 × 128-d patch vectors per page</span>
             </div>
             <div class="wf-arrow">multivectors</div>
             <div class="wf-node">
               <span class="wf-stage">Index</span>
-              <span class="wf-what">Qdrant multivector collection</span>
-              <span class="wf-how">MAX_SIM comparator · query tokens match page patches</span>
+              <span class="wf-what">Qdrant multivector</span>
+              <span class="wf-how">MAX_SIM</span>
             </div>
           </div>
           <div class="wf-lane wf-lane-text">
@@ -349,27 +349,27 @@
             <div class="wf-node">
               <span class="wf-stage">Stage 2b · Text embedding</span>
               <span class="wf-what">BGE-small-en-v1.5</span>
-              <span class="wf-how">one 384-d dense vector per page · runs on CPU</span>
+              <span class="wf-how">one 384-d vector per page</span>
             </div>
             <div class="wf-arrow">dense vectors</div>
             <div class="wf-node">
               <span class="wf-stage">Index</span>
-              <span class="wf-what">Qdrant dense collection</span>
-              <span class="wf-how">cosine similarity</span>
+              <span class="wf-what">Qdrant dense</span>
+              <span class="wf-how">cosine</span>
             </div>
           </div>
         </div>
         <div class="wf-merge"><span>ranked list (visual) ↘</span><span>↙ ranked list (text)</span></div>
         <div class="wf-node">
           <span class="wf-stage">Stage 3 · Hybrid retrieval</span>
-          <span class="wf-what">Reciprocal Rank Fusion (k=60)</span>
-          <span class="wf-how">user query embedded into both lanes → two ranked lists → scale-free fusion → top-5 pages</span>
+          <span class="wf-what">Reciprocal Rank Fusion</span>
+          <span class="wf-how">two ranked lists → top-5 pages</span>
         </div>
         <div class="wf-arrow">top-5 page images (not text!)</div>
         <div class="wf-node">
           <span class="wf-stage">Stage 4 · Generation</span>
           <span class="wf-what">Gemini 2.5 Flash (vision-language model)</span>
-          <span class="wf-how">answers while looking at the page images · citation-forcing prompt → [doc p.N] citations</span>
+          <span class="wf-how">answers from page images → [doc p.N] citations</span>
         </div>
         <div class="wf-arrow">answer + citations</div>
         <div class="wf-lanes">
@@ -377,14 +377,14 @@
             <div class="wf-lane-title">Stage 5 · Evaluation</div>
             <div class="wf-node">
               <span class="wf-what">hit@1 / hit@5 / MRR + LLM-judge</span>
-              <span class="wf-how">10 gold-annotated questions · judge runs on a different model (Flash-Lite) to avoid self-grading</span>
+              <span class="wf-how">hit@1 0.80 · MRR 0.83 · judge 5/5</span>
             </div>
           </div>
           <div class="wf-lane wf-lane-text">
             <div class="wf-lane-title">Stage 6 · Serving</div>
             <div class="wf-node">
-              <span class="wf-what">FastAPI + Streamlit + Docker Compose</span>
-              <span class="wf-how">public demo runs as a Docker Space on Hugging Face (embedded above)</span>
+              <span class="wf-what">FastAPI + Streamlit + Docker</span>
+              <span class="wf-how">demo: Hugging Face Space</span>
             </div>
           </div>
         </div>
