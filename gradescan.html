@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GradeScan — AI Answer-Sheet Grading | Usama — AI Engineer</title>
+  <meta name="description" content="GradeScan engineering report: automated grading of scanned exam answer sheets with a two-stage YOLOv12 detector for MCQ bubbles and Gemini VLM for handwritten responses — evolved across three versions on real scan batches." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ---------- Project report page ---------- */
+    .cs-hero {
+      padding: 140px 24px 30px;
+      background:
+        radial-gradient(ellipse 60% 45% at 70% 15%, rgba(14, 165, 233, 0.12), transparent),
+        radial-gradient(ellipse 50% 40% at 25% 80%, rgba(139, 92, 246, 0.10), transparent);
+    }
+    .cs-hero-inner { max-width: 900px; margin: 0 auto; }
+    .cs-hero h1 { font-size: clamp(1.8rem, 4.5vw, 2.8rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin: 14px 0 16px; }
+    .cs-hero .hero-sub { max-width: 700px; }
+    .cs-section { max-width: 900px; margin: 0 auto; padding: 44px 24px; }
+    .cs-section h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 18px; letter-spacing: -0.01em; }
+    .cs-section h3 { font-size: 1.1rem; font-weight: 700; margin: 30px 0 12px; color: var(--text); }
+    .cs-section p, .cs-section li { color: var(--text-dim); font-size: 0.97rem; }
+    .cs-section ul, .cs-section ol { padding-left: 22px; display: grid; gap: 8px; margin: 12px 0; }
+    .cs-section strong { color: var(--text); }
+    .cs-section a { color: var(--accent); }
+
+    .cs-metrics { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
+    .cs-metric {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 22px; text-align: center; min-width: 110px;
+    }
+    .cs-metric .val { display: block; font-family: var(--mono); font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .cs-metric .lbl { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-top: 2px; }
+
+    .cs-table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--border); border-radius: var(--radius); }
+    table.cs-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: var(--bg-card); }
+    .cs-table th {
+      font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--accent); text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border);
+      background: rgba(14, 165, 233, 0.06); white-space: nowrap;
+    }
+    .cs-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: top; }
+    .cs-table tr:last-child td { border-bottom: none; }
+    .cs-table td strong { color: var(--text); }
+    .cs-hit { color: #059669; font-weight: 600; }
+    .cs-miss { color: #dc2626; font-weight: 600; }
+
+    .cs-quote {
+      border-left: 3px solid var(--accent); background: var(--bg-card);
+      border-radius: 0 var(--radius) var(--radius) 0; padding: 16px 20px; margin: 16px 0;
+      color: var(--text); font-size: 0.95rem;
+    }
+    .cs-quote cite { display: block; margin-top: 8px; font-style: normal; font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); }
+
+    .cs-story { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin: 14px 0; }
+    .cs-story h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+    .cs-story p { font-size: 0.92rem; margin-top: 10px; }
+    .cs-prob { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.06em; color: #b45309; }
+    .cs-sol { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.06em; color: #047857; }
+
+    .cs-back { display: inline-block; margin-bottom: 8px; font-family: var(--mono); font-size: 0.85rem; color: var(--accent); text-decoration: none; }
+    .cs-back:hover { text-decoration: underline; }
+
+    pre.cs-code {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 20px; overflow-x: auto; font-family: var(--mono); font-size: 0.8rem;
+      color: var(--text-dim); line-height: 1.6; margin: 14px 0;
+    }
+    pre.cs-code .k { color: var(--accent); }
+
+    /* ---------- Workflow diagram (stacked, mobile) ---------- */
+    .wf { margin: 22px 0; }
+    .wf-node {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 18px; text-align: center;
+    }
+    .wf-node .wf-stage {
+      display: block; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+    }
+    .wf-node .wf-what { display: block; font-weight: 600; color: var(--text); font-size: 0.95rem; }
+    .wf-node .wf-how { display: block; color: var(--text-dim); font-size: 0.85rem; margin-top: 3px; }
+    .wf-io { border-style: dashed; background: transparent; }
+    .wf-io .wf-what { font-family: var(--mono); font-size: 0.88rem; }
+    .wf-arrow {
+      text-align: center; padding: 6px 0; color: var(--accent);
+      font-family: var(--mono); font-size: 0.78rem;
+    }
+    .wf-arrow::before { content: "▼"; display: block; font-size: 0.7rem; margin-bottom: 2px; }
+    .wf-lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .wf-lane { border: 1px dashed var(--border); border-radius: 12px; padding: 14px; display: grid; gap: 0; align-content: start; }
+    .wf-lane-title {
+      font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      text-align: center; margin-bottom: 10px; font-weight: 700;
+    }
+    .wf-lane-visual .wf-lane-title { color: var(--accent); }
+    .wf-lane-text .wf-lane-title { color: var(--accent-2); }
+    .wf-lane-text .wf-node .wf-stage { color: var(--accent-2); }
+    .wf-lane-text .wf-arrow { color: var(--accent-2); }
+    @media (max-width: 720px) { .wf-lanes { grid-template-columns: 1fr; } }
+
+    /* SVG workflow diagram (desktop); stacked .wf version shows on mobile */
+    .wf-svg { width: 100%; height: auto; display: block; margin: 20px 0; }
+    .wfd-frame { fill: rgba(14, 165, 233, 0.04); stroke: #34557e; stroke-width: 2.5; }
+    .wfd-box { fill: #c9def2; stroke: #3f6b99; stroke-width: 2; }
+    .wfd-io { fill: #d8e9f8; stroke-dasharray: 6 4; }
+    .wfd-lane-v { fill: rgba(14, 165, 233, 0.14); stroke: rgba(3, 105, 161, 0.7); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-lane-t { fill: rgba(139, 92, 246, 0.14); stroke: rgba(124, 58, 237, 0.7); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-box-t { fill: #e4dbf8; stroke: #7c5bc7; }
+    .wfd-answer { fill: rgba(5, 150, 105, 0.18); stroke: rgba(4, 120, 87, 0.85); stroke-width: 2; }
+    .wfd-stage { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; fill: #055585; }
+    .wfd-stage-t { fill: #6d28d9; }
+    .wfd-main { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 700; fill: #0d1730; }
+    .wfd-label { font-family: var(--mono); font-size: 12px; font-weight: 600; fill: #274468; }
+    .wfd-flow { stroke: #045a8c; stroke-width: 2.5; fill: none; marker-end: url(#gsArr); }
+    .wfd-flow-t { stroke: #6d28d9; stroke-width: 2.5; fill: none; marker-end: url(#gsArrT); }
+    @media (min-width: 721px) { .wf { display: none; } }
+    @media (max-width: 720px) { .wf-svg { display: none; } }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">usama<span class="accent">.ai</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+      <ul class="nav-links">
+        <li><a href="index.html#about">About</a></li>
+        <li><a href="index.html#projects">Projects</a></li>
+        <li><a href="#workflow">Workflow</a></li>
+        <li><a href="#report">Report</a></li>
+        <li><a href="#problems">Problems</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <header class="cs-hero">
+    <div class="cs-hero-inner">
+      <a href="index.html#projects" class="cs-back">← Back to projects</a>
+      <div class="project-header">
+        <span class="project-tag tag-live">CLIENT PROJECT · DELIVERED</span>
+        <span class="project-tag">Computer Vision + VLM</span>
+      </div>
+      <h1>GradeScan — AI Grading of <span class="gradient-text">Scanned Answer Sheets</span></h1>
+      <p class="hero-sub">
+        Turn a scanned PDF of exam answer sheets into structured grades: MCQ answers, handwritten
+        free responses, and candidate numbers — with <strong>invalid and blank answers flagged
+        automatically</strong>. Built for an international mathematics olympiad and hardened on a
+        real 780-page scan batch. The MCQ lane runs fully offline with a two-stage YOLOv12
+        detector; only handwriting goes to a vision-language model.
+      </p>
+      <div class="pipeline" style="margin-top:26px">
+        <span class="stage">Deskew &amp; Orient</span>
+        <span class="stage">Rasterize</span>
+        <span class="stage">Grid Detection</span>
+        <span class="stage">Bubble Reading</span>
+        <span class="stage">VLM Handwriting</span>
+        <span class="stage">JSON Output</span>
+      </div>
+      <div class="cs-metrics">
+        <div class="cs-metric"><span class="val">0.995</span><span class="lbl">mAP50 · detectors</span></div>
+        <div class="cs-metric"><span class="val">780</span><span class="lbl">real pages processed</span></div>
+        <div class="cs-metric"><span class="val">4</span><span class="lbl">sheet formats</span></div>
+        <div class="cs-metric"><span class="val">~1s</span><span class="lbl">MCQ lane / page</span></div>
+        <div class="cs-metric"><span class="val">1</span><span class="lbl">API call / page</span></div>
+      </div>
+      <div class="project-links" style="margin-top:28px">
+        <a href="#workflow" class="link-btn">See the Workflow ↓</a>
+        <a href="#report" class="link-btn">Read the Report ↓</a>
+        <a href="#problems" class="link-btn">Problems I Faced ↓</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="workflow" class="cs-section reveal">
+      <h2><span class="section-num">01</span> System Workflow</h2>
+      <p>
+        Every page flows through two parallel lanes. <strong style="color:var(--accent)">Blue</strong>
+        is the MCQ lane — pure computer vision, no API calls, so it scales to thousands of pages for
+        free. <strong style="color:var(--accent-2)">Violet</strong> is the handwriting lane — one
+        Gemini call per page reads the candidate number, paper type, and the five free-response rows
+        in a single strict-format prompt.
+      </p>
+
+      <svg class="wf-svg" viewBox="0 0 920 890" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GradeScan pipeline workflow diagram">
+        <defs>
+          <marker id="gsArr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#045a8c"/>
+          </marker>
+          <marker id="gsArrT" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#6d28d9"/>
+          </marker>
+        </defs>
+
+        <!-- outer boundary -->
+        <rect x="4" y="4" width="912" height="882" rx="18" class="wfd-frame"/>
+
+        <!-- legend -->
+        <line x1="40" y1="24" x2="78" y2="24" class="wfd-flow"/>
+        <text x="86" y="28" class="wfd-label">MCQ lane — offline CV</text>
+        <line x1="40" y1="46" x2="78" y2="46" class="wfd-flow-t"/>
+        <text x="86" y="50" class="wfd-label">handwriting lane — VLM</text>
+
+        <!-- input -->
+        <rect x="290" y="58" width="340" height="44" rx="12" class="wfd-box wfd-io"/>
+        <text x="460" y="86" text-anchor="middle" class="wfd-main" font-size="15">📄 Scanned answer sheets · Paper A–F / K</text>
+
+        <line x1="460" y1="102" x2="460" y2="132" class="wfd-flow"/>
+
+        <!-- stage 1 -->
+        <rect x="235" y="136" width="450" height="58" rx="12" class="wfd-box"/>
+        <text x="460" y="159" text-anchor="middle" class="wfd-stage">STAGE 1 · DESKEW &amp; ORIENT</text>
+        <text x="460" y="182" text-anchor="middle" class="wfd-main">ocrmypdf — deskew · rotate flipped pages</text>
+
+        <line x1="460" y1="194" x2="460" y2="224" class="wfd-flow"/>
+
+        <!-- stage 2 -->
+        <rect x="235" y="228" width="450" height="58" rx="12" class="wfd-box"/>
+        <text x="460" y="251" text-anchor="middle" class="wfd-stage">STAGE 2 · RASTERIZE</text>
+        <text x="460" y="274" text-anchor="middle" class="wfd-main">pdf2image — batches of 10 pages</text>
+
+        <path d="M350,286 L242,340" class="wfd-flow"/>
+        <path d="M570,286 L678,340" class="wfd-flow-t"/>
+        <text x="290" y="312" text-anchor="end" class="wfd-label">page image</text>
+        <text x="630" y="312" text-anchor="start" class="wfd-label">full page</text>
+
+        <!-- lanes -->
+        <rect x="40" y="344" width="400" height="392" rx="14" class="wfd-lane-v"/>
+        <rect x="480" y="344" width="400" height="392" rx="14" class="wfd-lane-t"/>
+        <text x="240" y="372" text-anchor="middle" class="wfd-stage">MCQ LANE · OFFLINE — NO API</text>
+        <text x="680" y="372" text-anchor="middle" class="wfd-stage wfd-stage-t">HANDWRITING LANE · GEMINI</text>
+
+        <!-- left lane boxes -->
+        <rect x="70" y="388" width="340" height="50" rx="10" class="wfd-box"/>
+        <text x="240" y="419" text-anchor="middle" class="wfd-main" font-size="15">YOLOv12-m — detect MCQ grid</text>
+        <line x1="240" y1="438" x2="240" y2="462" class="wfd-flow"/>
+
+        <rect x="70" y="466" width="340" height="50" rx="10" class="wfd-box"/>
+        <text x="240" y="497" text-anchor="middle" class="wfd-main" font-size="15">Split grid → 20 question rows</text>
+        <line x1="240" y1="516" x2="240" y2="540" class="wfd-flow"/>
+
+        <rect x="70" y="544" width="340" height="50" rx="10" class="wfd-box"/>
+        <text x="240" y="575" text-anchor="middle" class="wfd-main" font-size="15">YOLOv12-m — D / ND per option</text>
+        <line x1="240" y1="594" x2="240" y2="618" class="wfd-flow"/>
+
+        <rect x="70" y="622" width="340" height="50" rx="10" class="wfd-box"/>
+        <text x="240" y="653" text-anchor="middle" class="wfd-main" font-size="15">Fill-% verdict → A–E · IN · BL</text>
+        <text x="240" y="706" text-anchor="middle" class="wfd-label">≥2 boxes &gt;45% → IN · all &lt;45% → BL</text>
+
+        <!-- right lane boxes -->
+        <rect x="510" y="428" width="340" height="50" rx="10" class="wfd-box wfd-box-t"/>
+        <text x="680" y="459" text-anchor="middle" class="wfd-main" font-size="15">Grayscale page → PNG bytes</text>
+        <line x1="680" y1="478" x2="680" y2="506" class="wfd-flow-t"/>
+
+        <rect x="510" y="510" width="340" height="50" rx="10" class="wfd-box wfd-box-t"/>
+        <text x="680" y="541" text-anchor="middle" class="wfd-main" font-size="15">Gemini 2.5 Flash · temperature 0</text>
+        <line x1="680" y1="560" x2="680" y2="588" class="wfd-flow-t"/>
+
+        <rect x="510" y="592" width="340" height="50" rx="10" class="wfd-box wfd-box-t"/>
+        <text x="680" y="623" text-anchor="middle" class="wfd-main" font-size="15">Candidate # · paper type · 5 rows</text>
+        <text x="680" y="676" text-anchor="middle" class="wfd-label">row &gt; 10 characters → IN</text>
+
+        <!-- merge -->
+        <path d="M240,736 L360,790" class="wfd-flow"/>
+        <path d="M680,736 L560,790" class="wfd-flow-t"/>
+
+        <!-- output -->
+        <rect x="235" y="794" width="450" height="58" rx="12" class="wfd-box wfd-answer"/>
+        <text x="460" y="817" text-anchor="middle" class="wfd-stage" fill="#046148">OUTPUT · PER-PAGE JSON</text>
+        <text x="460" y="840" text-anchor="middle" class="wfd-main">answers · candidate # · paper type · timings</text>
+      </svg>
+
+      <!-- stacked mobile version -->
+      <div class="wf">
+        <div class="wf-node wf-io"><span class="wf-what">📄 Scanned answer sheets · Paper A–F / K</span></div>
+        <div class="wf-arrow"></div>
+        <div class="wf-node">
+          <span class="wf-stage">Stage 1 · Deskew &amp; Orient</span>
+          <span class="wf-what">ocrmypdf</span>
+          <span class="wf-how">deskew · rotate flipped pages · force-OCR</span>
+        </div>
+        <div class="wf-arrow"></div>
+        <div class="wf-node">
+          <span class="wf-stage">Stage 2 · Rasterize</span>
+          <span class="wf-what">pdf2image</span>
+          <span class="wf-how">batches of 10 pages → RGB arrays</span>
+        </div>
+        <div class="wf-arrow"></div>
+        <div class="wf-lanes">
+          <div class="wf-lane wf-lane-visual">
+            <div class="wf-lane-title">MCQ lane · offline — no API</div>
+            <div class="wf-node"><span class="wf-what">YOLOv12-m grid detector</span><span class="wf-how">mAP50 0.995 · NMS · top-1 (top-2 for Paper K)</span></div>
+            <div class="wf-arrow"></div>
+            <div class="wf-node"><span class="wf-what">Split grid → question rows</span></div>
+            <div class="wf-arrow"></div>
+            <div class="wf-node"><span class="wf-what">YOLOv12-m option detector</span><span class="wf-how">classes: D (darkened) / ND (not darkened)</span></div>
+            <div class="wf-arrow"></div>
+            <div class="wf-node"><span class="wf-what">Fill-% verdict → A–E · IN · BL</span><span class="wf-how">≥2 boxes &gt;45% → IN · all &lt;45% → BL</span></div>
+          </div>
+          <div class="wf-lane wf-lane-text">
+            <div class="wf-lane-title">Handwriting lane · Gemini</div>
+            <div class="wf-node"><span class="wf-what">Grayscale page → PNG bytes</span></div>
+            <div class="wf-arrow"></div>
+            <div class="wf-node"><span class="wf-what">Gemini 2.5 Flash · temperature 0</span><span class="wf-how">one strict-format prompt per page</span></div>
+            <div class="wf-arrow"></div>
+            <div class="wf-node"><span class="wf-what">Candidate # · paper type · 5 rows</span><span class="wf-how">row &gt; 10 characters → IN</span></div>
+          </div>
+        </div>
+        <div class="wf-arrow"></div>
+        <div class="wf-node" style="border-color: rgba(4,120,87,0.6); background: rgba(5,150,105,0.08)">
+          <span class="wf-stage" style="color:#047857">Output · per-page JSON</span>
+          <span class="wf-what">answers · candidate # · paper type · timings</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="report" class="cs-section reveal">
+      <h2><span class="section-num">02</span> Engineering Report — Three Versions</h2>
+      <p>
+        This system was rebuilt three times, and each rebuild was forced by reality: a new sheet
+        format, messier scans, or a technique hitting its ceiling. The progression — from hardcoded
+        pixel slicing, to adaptive contour detection, to trained object detectors — is the story of
+        the project.
+      </p>
+
+      <h3>The task</h3>
+      <p>
+        Input: a scanned PDF where every page is one student's answer sheet. Output, per page:
+        the selected option for every MCQ, the handwritten free-response answers, the handwritten
+        candidate number, and the paper type. Two failure modes must be flagged, not guessed:
+        <strong>IN (invalid)</strong> when a student marks more than one bubble (or writes more than
+        10 characters in a free-response row), and <strong>BL (blank)</strong> when nothing is marked.
+        Getting IN/BL right is what separates a grader from a toy — a wrong guess silently changes
+        a student's score.
+      </p>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Sheet format</th><th>MCQ layout</th><th>Handled in</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Legacy sheet</strong> (2 layout variants)</td><td>20 questions × 5 options (A–E), 3-column page</td><td>Version 1</td></tr>
+            <tr><td><strong>New sheet</strong></td><td>10 questions × 3 numeric options in a bordered box</td><td>Version 2</td></tr>
+            <tr><td><strong>Paper A–F</strong></td><td>20 questions × 5 options (A–E), single grid</td><td>Version 3</td></tr>
+            <tr><td><strong>Paper K</strong></td><td>Two grids: 10 questions left + 5 middle, 3 options each</td><td>Version 3</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Version 1 — Geometric OMR: prove the idea works</h3>
+      <p>
+        The first version treated bubble reading as pure geometry. Each page was split into three
+        columns with <code>np.array_split</code>, the answer column sliced into 20 question rows and
+        each row into choice cells at fixed pixel offsets, then binarized with an inverse threshold.
+        The selected answer is simply the cell with the highest ink density — the percentage of
+        non-zero pixels after thresholding. A marked bubble reads 22–53% ink; unmarked neighbours sit
+        under 10%, so <code>argmax</code> is unambiguous. EasyOCR read the section header
+        ("Questions 1 to 20") to switch between the two legacy layout variants automatically.
+      </p>
+      <p>
+        It worked — 20/20 on the sample sheets — but every coordinate was tuned to one specific PDF.
+        The moment the client sent a new sheet design, everything broke. That was the trigger for
+        version 2.
+      </p>
+
+      <h3>Version 2 — Contour detection + real-world robustness</h3>
+      <p>
+        Version 2 replaced every hardcoded coordinate with <strong>structure detection</strong>. The
+        MCQ block is found by thresholding, morphological closing, and contour filtering — keep the
+        contour whose aspect ratio says "tall vertical box" (h/w &gt; 2) on the left half of the page.
+        Inside each question row, a second contour pass finds the small answer boxes themselves, so
+        ink percentage is measured <em>inside the printed box</em>, not in an arbitrary crop. All size
+        filters became fractions of the page dimensions (e.g. width &gt; page_width/8.27) instead of
+        absolute pixels, so rescaled and low-resolution scans pass the same filters.
+      </p>
+      <p>Two decision rules formalized the IN/BL flags from raw fill percentages:</p>
+      <ul>
+        <li><strong>Multi-choice (IN):</strong> two options whose fills are within 95% of each other and both clearly above the third → the student marked twice.</li>
+        <li><strong>All-blank (BL):</strong> all fills within 98% of each other → nothing is marked, the tiny variation is print noise.</li>
+      </ul>
+      <p>
+        For crooked scans — tilted, upside-down, or shrunken pages — I benchmarked four deskew
+        approaches (minAreaRect angle correction, two Hough-line estimators, and
+        <code>ocrmypdf</code>). The homegrown methods each failed on some rotation class;
+        <code>ocrmypdf --deskew --rotate-pages</code> fixed slant <em>and</em> 180° flips in one
+        pass, so it became a preprocessing stage rather than custom geometry code.
+      </p>
+      <p>
+        Handwriting was the other half. I first trained a MobileNetV3-Small on EMNIST-balanced
+        (47 character classes) as a fully offline reader — it reached <strong>89.2% test
+        accuracy</strong>, but single-character crops from real sheets broke it (a handwritten Y
+        classified as W). Reading characters in isolation throws away context a vision-language model
+        gets for free, so the free-response rows went to <strong>Gemini Flash at temperature 0</strong>
+        instead. The final version 2 pipeline merged candidate number + all five rows into
+        <strong>one prompt per page</strong> with a strict output format — halving API calls and
+        making the response parseable.
+      </p>
+
+      <h3>Version 3 — Two new formats, real scans, and the jump to YOLOv12</h3>
+      <p>
+        The final phase brought the Paper A–F and Paper K formats and, crucially, a
+        <strong>real 780-page scan batch</strong> of student scripts. Five successive notebook
+        iterations tried to stretch the contour approach to the new A–E bubble grid, and the
+        notebooks record exactly where it died: the black divider lines between question rows merged
+        adjacent contours, and real-scan noise (compression artifacts, faint print, slight
+        misalignment) made the hand-tuned filters unreliable. Heuristics that are 98% right per box
+        are wrong somewhere on nearly every 100-question page.
+      </p>
+      <p>So detection became a learned problem. I labeled sheet crops in Roboflow and trained two YOLOv12 detectors:</p>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Model</th><th>Job</th><th>Classes</th><th>mAP50</th><th>mAP50-95</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Grid detector</strong> (only_grid)</td><td>Find the MCQ grid region on the page</td><td>1</td><td class="cs-hit">0.995</td><td class="cs-hit">0.995</td></tr>
+            <tr><td><strong>Grid detector — Paper K</strong></td><td>Find both MCQ grids (left + middle)</td><td>1</td><td class="cs-hit">0.995</td><td>0.954</td></tr>
+            <tr><td><strong>Option detector</strong> (mcq_split)</td><td>Classify each option box in a question row</td><td>2 — D / ND</td><td class="cs-hit">0.995</td><td>0.75</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        I trained nano and medium variants of each and kept <strong>YOLOv12-m</strong> — the nano
+        models matched mAP50 but were less stable on the localization-strict mAP50-95. The option
+        detector's two classes are <strong>D</strong> (darkened) and <strong>ND</strong> (not
+        darkened): detections are NMS-deduplicated with <code>supervision</code>, kept top-5 by
+        confidence, then re-sorted left-to-right so index position maps directly to option letter
+        A–E. Paper K reuses the same machinery with <code>top_n=2</code> grid detections and a
+        10-row/5-row split decided by block height.
+      </p>
+      <p>
+        One refinement mattered more than any other: <strong>YOLO localizes, pixels decide</strong>.
+        Trusting the D/ND labels alone mislabeled exactly the cases that matter most — multi-marked
+        and blank rows. The shipped pipeline uses YOLO only to find each option box precisely, then
+        computes ink fill inside the detected box: ≥2 boxes above 45% fill → IN, all below 45% → BL,
+        otherwise argmax → the answer. The detector contributes localization robustness; the
+        centuries-old "count the dark pixels" trick contributes the verdict.
+      </p>
+
+      <h3>Output and performance</h3>
+      <p>
+        Each page produces a JSON record; a page-level flag list routes uncertain pages to manual
+        review. Timings from the real-batch run (Kaggle T4, free tier):
+      </p>
+      <pre class="cs-code">"page_1": {
+  "mcq_answers": { "1": "IN", "2": "BL", "3": "BL", ... "20": "D" },
+  "candidate_number": "CAN12345678",
+  "free_responses": ["+ - x ÷", "1 D K", "0 0 1 2", "5 5 5", "3 2 1"],
+  "paper_type": "A",
+  "timings": { "detect_sec": 3.88, "mcq_sec": 5.06, "free_sec": 4.73, "page_sec": 13.69 }
+}</pre>
+      <ul>
+        <li><strong>MCQ lane:</strong> ~0.8–1s grid detection + ~0.2s per question row after model warm-up — fully offline, so a 1,000-page batch costs nothing but GPU time (verified with generated 100- and 1,000-page stress-test PDFs).</li>
+        <li><strong>Handwriting lane:</strong> ~4.7s per Gemini call — one call per page, and only this lane touches an API.</li>
+        <li><strong>End-to-end:</strong> ~13.7s per page unoptimized and sequential; the lanes are independent, so parallelizing them and batching Gemini calls is the first easy win.</li>
+      </ul>
+      <p>
+        Before settling on the Gemini API, I evaluated Google Cloud Vision OCR and Vertex AI as
+        handwriting readers — classic OCR mangled isolated handwritten characters, while the
+        multimodal prompt approach could be told exactly what to look for and how to format it.
+        The delivered system was demoed to the client as an API with screen-recorded walkthroughs.
+      </p>
+    </section>
+
+    <section id="problems" class="cs-section reveal">
+      <h2><span class="section-num">03</span> Problems I Faced</h2>
+      <p>Each of these changed the architecture. Problem first, then the solution that shipped.</p>
+
+      <div class="cs-story">
+        <h4>1 · Hardcoded coordinates collapsed on every new sheet format</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> Version 1 read bubbles by slicing the page at fixed pixel offsets. It scored 20/20 on the sample PDF and 0/20 on the next format the client sent: every offset pointed at the wrong region. Worse, the same format at a different scan resolution also broke, because absolute pixel thresholds (w &gt; 200) don't survive rescaling.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Stop assuming positions; detect structure. The MCQ block is found by its shape (a tall vertical contour on the left half), the answer boxes by theirs (small wide contours inside a row), and every size filter became a fraction of the page dimensions. The same code then handled full-size and shrunken scans without retuning.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>2 · Tilted, flipped, and shrunken scans</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> Real scan batches contain pages that are slanted, upside down, or scanned small. A tilted grid slices diagonally through bubble rows, and an upside-down sheet reads answers in reverse order — silently producing wrong grades rather than errors.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> I implemented three deskew methods by hand (minAreaRect angle recovery and two Hough-line angle estimators) and benchmarked them against <code>ocrmypdf</code>. Each manual method failed on some rotation class — minAreaRect can't tell 0° from 180°. <code>ocrmypdf --deskew --rotate-pages</code> handled slant and flips together (it uses OCR text confidence to decide orientation), so preprocessing became one battle-tested call instead of custom geometry code.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>3 · Divider lines poisoned contour detection on the new grid</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> The Paper A–F format prints a black divider line between question rows. When a row crop clipped that line, <code>findContours</code> merged the line with the option boxes into one blob — the box coordinates came back wrong, and fill percentages were measured over garbage regions. My notebook notes from the time: "Perfect method, but some rows have a black line under the boxes, so findContours mixes and doesn't pick the box clearly."</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Replace hand-tuned contour filters with a trained detector. A YOLOv12-m model labeled on Roboflow crops learned to localize option boxes <em>despite</em> the divider lines — lines are just context to a detector, not a failure mode. Detection mAP50 hit 0.995 and the whole class of "contour merged with a stray line" bugs disappeared.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>4 · Clean synthetic samples vs. 780 pages of real scans</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> Everything up to that point was validated on clean, digitally-generated sample sheets. The real batch — 780 compressed scanned student scripts — brought JPEG artifacts, faint printing, ink smudges, and slight per-page misalignment. Heuristics that were 98% accurate per box are wrong somewhere on nearly every page when a page has 100 boxes.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Train on the distribution you deploy on. I labeled crops from the real scans themselves, retrained both detectors, and processed pages in batches of 10 to keep memory flat on a 780-page PDF. Pages the pipeline was unsure about were written to a flag list for manual review — 16 pages out of 780 — instead of being silently mis-graded.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>5 · The detector alone got IN and BL wrong — the cases that matter most</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> Reading answers directly from YOLO's D/ND labels worked for cleanly-marked rows but erred exactly on multi-marked and blank rows: a half-hearted pencil stroke would flip ND→D or vice versa. Those are the rows a grading system exists to catch — mislabeling IN as a normal answer changes a student's score.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Split the job: <strong>YOLO localizes, pixels decide.</strong> The detector's only responsibility is finding each option box precisely; the verdict comes from ink-fill percentage inside the detected box with explicit thresholds — two or more boxes above 45% is IN, all below 45% is BL, otherwise the argmax is the answer. Deterministic, tunable, and explainable to the client one threshold at a time.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>6 · Reading handwriting: a 89%-accurate CNN is still the wrong tool</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> Free responses and candidate numbers are handwritten. I trained a MobileNetV3-Small on EMNIST (47 classes) to 89.2% test accuracy — and it still misread real crops (a clear Y predicted as W), because classifying characters in isolation drops all context, and 89% per character compounds to coin-flip odds on a 10-character candidate number.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Use a vision-language model that reads the whole page in context. One Gemini 2.5 Flash call per page, temperature 0, with a strict-format prompt returning candidate number, paper type (A–F/K), and the five response rows — plus the business rule encoded right in the prompt: any row over 10 characters returns IN. The prompt's format contract makes the response machine-parseable, and merging everything into one call halved API cost.</p>
+      </div>
+    </section>
+
+    <section class="cs-section reveal">
+      <h2><span class="section-num">04</span> What I'd Build Next</h2>
+      <ul>
+        <li><strong>Parallel lanes + async Gemini batching</strong> — the MCQ and handwriting lanes are independent; running them concurrently and batching VLM calls should cut ~13.7s/page to under 5s.</li>
+        <li><strong>Answer-key scoring &amp; reports</strong> — join extracted answers against a key to produce per-candidate scores, and export CSV/Excel report cards.</li>
+        <li><strong>Active-learning loop</strong> — flagged pages that a human corrects become new labeled training data, so the detectors improve on exactly their failure cases.</li>
+        <li><strong>Local VLM for privacy</strong> — swap Gemini for a self-hosted Qwen2.5-VL so student data never leaves the machine — a hard requirement for many exam boards.</li>
+        <li><strong>ONNX/TensorRT export</strong> — quantize the detectors for CPU-only deployment, removing the GPU requirement for the offline lane.</li>
+      </ul>
+      <div class="project-links" style="margin-top:34px">
+        <a href="#workflow" class="link-btn">Back to the Workflow ↑</a>
+        <a href="index.html#projects" class="link-btn">← All Projects</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Usama · Built with plain HTML/CSS — no framework needed.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
