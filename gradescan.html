@@ -56,6 +56,15 @@
     }
     .cs-quote cite { display: block; margin-top: 8px; font-style: normal; font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); }
 
+    .cs-fig { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin: 18px 0; }
+    .cs-fig img { display: block; width: 100%; height: auto; border-radius: 6px; background: #fff; }
+    .cs-fig figcaption { font-size: 0.82rem; color: var(--text-dim); margin-top: 10px; line-height: 1.55; }
+    .cs-figrow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; margin: 18px 0; }
+    .cs-figrow .cs-fig { margin: 0; display: flex; flex-direction: column; }
+    .cs-figrow .cs-fig figcaption { margin-top: auto; padding-top: 10px; }
+    .cs-fig .img-narrow { max-width: 160px; margin: 0 auto; }
+    .cs-fig .img-grid { max-width: 280px; margin: 0 auto; }
+    @media (max-width: 720px) { .cs-figrow { grid-template-columns: 1fr; } }
     .cs-story { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin: 14px 0; }
     .cs-story h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; color: var(--text); }
     .cs-story p { font-size: 0.92rem; margin-top: 10px; }
@@ -429,6 +438,20 @@
         A–E. Paper K reuses the same machinery with <code>top_n=2</code> grid detections and a
         10-row/5-row split decided by block height.
       </p>
+      <div class="cs-figrow">
+        <figure class="cs-fig">
+          <img src="assets/gradescan/yolo-grid-detect-abcdef.png" class="img-grid" alt="YOLOv12 grid detector output on a real Paper A–F scan: purple bounding box around the 20-question MCQ grid" loading="lazy" />
+          <figcaption><strong>Grid detector on a real Paper A–F scan</strong> — one detection wraps the full 20×5 bubble grid, unfazed by pencil marks and scan noise. (Cropped to the grid region; candidate details removed.)</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <img src="assets/gradescan/yolo-grid-detect-k.png" alt="YOLOv12 grid detector output on a real Paper K scan: two bounding boxes around the left 10-question grid and middle 5-question grid" loading="lazy" />
+          <figcaption><strong>Grid detector on a real Paper K scan</strong> — <code>top_n=2</code> catches both grids (10 questions left, 5 middle), even with kindergartners' scribbles spilling out of the boxes.</figcaption>
+        </figure>
+      </div>
+      <figure class="cs-fig">
+        <img src="assets/gradescan/yolo-training-curves.png" alt="YOLOv12 option-detector training curves over 200 epochs: box, class and DFL losses falling, precision, recall and mAP50 converging near 1.0" loading="lazy" />
+        <figcaption><strong>Option-detector training, 200 epochs</strong> (real notebook output) — losses converge and mAP50 saturates at ≈0.995 early; the localization-strict mAP50-95 keeps climbing to ≈0.75, which is exactly why the medium model was kept over the nano and why box <em>positions</em> (not labels) carry the final verdict.</figcaption>
+      </figure>
       <p>
         One refinement mattered more than any other: <strong>YOLO localizes, pixels decide</strong>.
         Trusting the D/ND labels alone mislabeled exactly the cases that matter most — multi-marked
@@ -437,6 +460,10 @@
         otherwise argmax → the answer. The detector contributes localization robustness; the
         centuries-old "count the dark pixels" trick contributes the verdict.
       </p>
+      <figure class="cs-fig">
+        <img src="assets/gradescan/yolo-dnd-row.png" alt="Option detector output on a real question row: five boxes detected, four labeled ND in red and the marked option labeled D in purple" loading="lazy" />
+        <figcaption><strong>Option detector on a real question row</strong> (real notebook output) — all five boxes localized, the pencilled option classified D (darkened), the rest ND. The pipeline keeps only the box coordinates; the D/ND verdict is re-derived from ink fill inside each box.</figcaption>
+      </figure>
 
       <h3>Output and performance</h3>
       <p>
@@ -495,12 +522,32 @@
         <h4>5 · The detector alone got IN and BL wrong — the cases that matter most</h4>
         <p><strong class="cs-prob">PROBLEM —</strong> Reading answers directly from YOLO's D/ND labels worked for cleanly-marked rows but erred exactly on multi-marked and blank rows: a half-hearted pencil stroke would flip ND→D or vice versa. Those are the rows a grading system exists to catch — mislabeling IN as a normal answer changes a student's score.</p>
         <p><strong class="cs-sol">SOLUTION —</strong> Split the job: <strong>YOLO localizes, pixels decide.</strong> The detector's only responsibility is finding each option box precisely; the verdict comes from ink-fill percentage inside the detected box with explicit thresholds — two or more boxes above 45% is IN, all below 45% is BL, otherwise the argmax is the answer. Deterministic, tunable, and explainable to the client one threshold at a time.</p>
+        <div class="cs-figrow">
+          <figure class="cs-fig">
+            <img src="assets/gradescan/row-erased.png" alt="Real question row crop: option A firmly pencilled, option C showing a faint erased mark" loading="lazy" />
+            <figcaption><strong>The case that breaks label-only reading</strong> — A is marked, C carries a faint erased mark. A borderline detector label flips this row to IN; the fill-% rule reads C as well under 45% and keeps the answer A.</figcaption>
+          </figure>
+          <figure class="cs-fig">
+            <img src="assets/gradescan/row-scribble-k.png" alt="Real Paper K question row: option C scribbled heavily, spilling outside the printed box" loading="lazy" />
+            <figcaption><strong>Kindergarten reality (Paper K)</strong> — the mark is a scribble spilling past the printed box. YOLO still localizes the box; fill inside it is unambiguous → C.</figcaption>
+          </figure>
+        </div>
       </div>
 
       <div class="cs-story">
         <h4>6 · Reading handwriting: a 89%-accurate CNN is still the wrong tool</h4>
         <p><strong class="cs-prob">PROBLEM —</strong> Free responses and candidate numbers are handwritten. I trained a MobileNetV3-Small on EMNIST (47 classes) to 89.2% test accuracy — and it still misread real crops (a clear Y predicted as W), because classifying characters in isolation drops all context, and 89% per character compounds to coin-flip odds on a 10-character candidate number.</p>
         <p><strong class="cs-sol">SOLUTION —</strong> Use a vision-language model that reads the whole page in context. One Gemini 2.5 Flash call per page, temperature 0, with a strict-format prompt returning candidate number, paper type (A–F/K), and the five response rows — plus the business rule encoded right in the prompt: any row over 10 characters returns IN. The prompt's format contract makes the response machine-parseable, and merging everything into one call halved API cost.</p>
+        <div class="cs-figrow">
+          <figure class="cs-fig">
+            <img src="assets/gradescan/char-y.png" class="img-narrow" alt="Binarized crop of a handwritten letter Y from a real answer sheet" loading="lazy" />
+            <figcaption><strong>The crop that killed the CNN</strong> — this handwritten Y, cut from a real sheet and binarized the way EMNIST expects, came back as W. In isolation even a human hesitates; in the context of a full row, a VLM doesn't.</figcaption>
+          </figure>
+          <figure class="cs-fig">
+            <img src="assets/gradescan/free-response-grid.png" alt="Handwritten free-response test grid with rows reading 354, HELLO, 1234, 2512, LOVE in one-character-per-box cells" loading="lazy" />
+            <figcaption><strong>Free-response input format</strong> (test sheet from development) — one character per box, digits and uppercase letters mixed. The per-character CNN saw 20 isolated classification problems here; Gemini reads it as five strings in one pass.</figcaption>
+          </figure>
+        </div>
       </div>
     </section>
 
