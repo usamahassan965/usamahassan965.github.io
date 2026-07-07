@@ -86,6 +86,62 @@
     }
     pre.cs-code .k { color: var(--accent); }
 
+    /* ---------- Workflow diagram (stacked, mobile) ---------- */
+    .wf { margin: 22px 0; }
+    .wf-node {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 18px; text-align: center;
+    }
+    .wf-node .wf-stage {
+      display: block; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+    }
+    .wf-node .wf-what { display: block; font-weight: 600; color: var(--text); font-size: 0.95rem; }
+    .wf-node .wf-how { display: block; color: var(--text-dim); font-size: 0.85rem; margin-top: 3px; }
+    .wf-io { border-style: dashed; background: transparent; }
+    .wf-io .wf-what { font-family: var(--mono); font-size: 0.88rem; }
+    .wf-arrow {
+      text-align: center; padding: 6px 0; color: var(--accent);
+      font-family: var(--mono); font-size: 0.78rem;
+    }
+    .wf-arrow::before { content: "▼"; display: block; font-size: 0.7rem; margin-bottom: 2px; }
+    .wf-lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .wf-lane { border: 1px dashed var(--border); border-radius: 12px; padding: 14px; display: grid; gap: 0; align-content: start; }
+    .wf-lane-title {
+      font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      text-align: center; margin-bottom: 10px; font-weight: 700;
+    }
+    .wf-lane-visual .wf-lane-title { color: var(--accent); }
+    .wf-lane-text .wf-lane-title { color: var(--accent-2); }
+    .wf-lane-text .wf-node .wf-stage { color: var(--accent-2); }
+    .wf-lane-text .wf-arrow { color: var(--accent-2); }
+    @media (max-width: 720px) { .wf-lanes { grid-template-columns: 1fr; } }
+
+    /* SVG workflow diagram (desktop); stacked .wf version shows on mobile */
+    .wf-svg { width: 100%; height: auto; display: block; margin: 20px 0; }
+    .wfd-frame { fill: rgba(14, 165, 233, 0.04); stroke: #34557e; stroke-width: 2.5; }
+    .wfd-box { fill: #c9def2; stroke: #3f6b99; stroke-width: 2; }
+    .wfd-io { fill: #d8e9f8; stroke-dasharray: 6 4; }
+    .wfd-lane-v { fill: rgba(14, 165, 233, 0.14); stroke: rgba(3, 105, 161, 0.7); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-lane-t { fill: rgba(139, 92, 246, 0.14); stroke: rgba(124, 58, 237, 0.7); stroke-dasharray: 6 4; stroke-width: 2; }
+    .wfd-box-t { fill: #e4dbf8; stroke: #7c5bc7; }
+    .wfd-answer { fill: rgba(5, 150, 105, 0.18); stroke: rgba(4, 120, 87, 0.85); stroke-width: 2; }
+    .wfd-stage { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; fill: #055585; }
+    .wfd-stage-t { fill: #6d28d9; }
+    .wfd-main { font-family: "Inter", sans-serif; font-size: 16px; font-weight: 700; fill: #0d1730; }
+    .wfd-label { font-family: var(--mono); font-size: 12px; font-weight: 600; fill: #274468; }
+    .wfd-flow { stroke: #045a8c; stroke-width: 2.5; fill: none; marker-end: url(#hwArr); }
+    .wfd-flow-t { stroke: #6d28d9; stroke-width: 2.5; fill: none; marker-end: url(#hwArrT); }
+    @media (min-width: 721px) { .wf { display: none; } }
+    @media (max-width: 720px) { .wf-svg { display: none; } }
+
+    /* embedded videos */
+    .video-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 18px 0; }
+    .video-grid .cs-fig { margin: 0; display: flex; flex-direction: column; }
+    .video-grid .cs-fig figcaption { margin-top: auto; padding-top: 10px; }
+    .cs-fig video { display: block; width: 100%; height: auto; border-radius: 6px; background: #000; }
+    @media (max-width: 720px) { .video-grid { grid-template-columns: 1fr; } }
+
     /* training-curve SVG chart */
     .curve-chart { width: 100%; height: auto; display: block; }
     .cc-grid { stroke: var(--border); stroke-width: 1; }
@@ -154,6 +210,148 @@
     <section id="workflow" class="cs-section reveal">
       <h2><span class="section-num">01</span> System Workflow</h2>
       <p>
+        Every CCTV clip flows through one detector, then splits into two parallel streams.
+        <strong style="color:var(--accent)">Blue</strong> is the person stream — EfficientTAM mask
+        propagation keeps worker identity through occlusion, and a pose model attaches 17 keypoints
+        to each track. <strong style="color:var(--accent-2)">Violet</strong> is the cow stream —
+        ByteTrack is enough here, because cow features are aggregate (positions and proximity, not
+        identity). The streams merge into per-track feature sequences that a Transformer with MIL
+        attention pooling turns into a clip-level verdict.
+      </p>
+
+      <svg class="wf-svg" viewBox="0 0 920 960" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HerdWatch pipeline workflow diagram">
+        <defs>
+          <marker id="hwArr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#045a8c"/>
+          </marker>
+          <marker id="hwArrT" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#6d28d9"/>
+          </marker>
+        </defs>
+
+        <!-- outer boundary -->
+        <rect x="4" y="4" width="912" height="952" rx="18" class="wfd-frame"/>
+
+        <!-- legend -->
+        <line x1="40" y1="24" x2="78" y2="24" class="wfd-flow"/>
+        <text x="86" y="28" class="wfd-label">person stream — TAM + pose</text>
+        <line x1="40" y1="46" x2="78" y2="46" class="wfd-flow-t"/>
+        <text x="86" y="50" class="wfd-label">cow stream — ByteTrack</text>
+
+        <!-- input -->
+        <rect x="270" y="58" width="380" height="44" rx="12" class="wfd-box wfd-io"/>
+        <text x="460" y="86" text-anchor="middle" class="wfd-main" font-size="15">🎥 CCTV clip · sampled at 10 FPS</text>
+
+        <line x1="460" y1="102" x2="460" y2="132" class="wfd-flow"/>
+
+        <!-- stage 1 -->
+        <rect x="235" y="136" width="450" height="58" rx="12" class="wfd-box"/>
+        <text x="460" y="159" text-anchor="middle" class="wfd-stage">STAGE 1 · DETECTION</text>
+        <text x="460" y="182" text-anchor="middle" class="wfd-main">Fine-tuned YOLO26l — person + cow boxes</text>
+
+        <path d="M350,194 L242,248" class="wfd-flow"/>
+        <path d="M570,194 L678,248" class="wfd-flow-t"/>
+        <text x="290" y="220" text-anchor="end" class="wfd-label">person boxes</text>
+        <text x="630" y="220" text-anchor="start" class="wfd-label">cow boxes</text>
+
+        <!-- lanes -->
+        <rect x="40" y="252" width="400" height="392" rx="14" class="wfd-lane-v"/>
+        <rect x="480" y="252" width="400" height="392" rx="14" class="wfd-lane-t"/>
+        <text x="240" y="280" text-anchor="middle" class="wfd-stage">PERSON STREAM · EFFICIENTTAM</text>
+        <text x="680" y="280" text-anchor="middle" class="wfd-stage wfd-stage-t">COW STREAM · BYTETRACK</text>
+
+        <!-- left lane boxes -->
+        <rect x="70" y="296" width="340" height="50" rx="10" class="wfd-box"/>
+        <text x="240" y="327" text-anchor="middle" class="wfd-main" font-size="15">Mask propagation · whole-clip pass</text>
+        <line x1="240" y1="346" x2="240" y2="370" class="wfd-flow"/>
+
+        <rect x="70" y="374" width="340" height="50" rx="10" class="wfd-box"/>
+        <text x="240" y="405" text-anchor="middle" class="wfd-main" font-size="15">YOLO seed sweeps every 30 frames</text>
+        <line x1="240" y1="424" x2="240" y2="448" class="wfd-flow"/>
+
+        <rect x="70" y="452" width="340" height="50" rx="10" class="wfd-box"/>
+        <text x="240" y="483" text-anchor="middle" class="wfd-main" font-size="15">Pose model — 17 COCO keypoints</text>
+        <line x1="240" y1="502" x2="240" y2="526" class="wfd-flow"/>
+
+        <rect x="70" y="530" width="340" height="50" rx="10" class="wfd-box"/>
+        <text x="240" y="561" text-anchor="middle" class="wfd-main" font-size="15">Person tracks + keypoints</text>
+        <text x="240" y="614" text-anchor="middle" class="wfd-label">identity survives occlusion</text>
+
+        <!-- right lane boxes -->
+        <rect x="510" y="330" width="340" height="50" rx="10" class="wfd-box wfd-box-t"/>
+        <text x="680" y="361" text-anchor="middle" class="wfd-main" font-size="15">ByteTrack IDs · Kalman fills gaps</text>
+        <line x1="680" y1="380" x2="680" y2="408" class="wfd-flow-t"/>
+
+        <rect x="510" y="412" width="340" height="50" rx="10" class="wfd-box wfd-box-t"/>
+        <text x="680" y="443" text-anchor="middle" class="wfd-main" font-size="15">≥15-frame filter → cow tracks</text>
+        <text x="680" y="496" text-anchor="middle" class="wfd-label">63% per-frame recall → ~95% track-level</text>
+
+        <!-- merge -->
+        <path d="M240,644 L370,694" class="wfd-flow"/>
+        <path d="M680,644 L550,694" class="wfd-flow-t"/>
+
+        <!-- pkl -->
+        <rect x="270" y="698" width="380" height="44" rx="12" class="wfd-box wfd-io"/>
+        <text x="460" y="726" text-anchor="middle" class="wfd-main" font-size="15">per-clip .pkl — tracks · keypoints · quality</text>
+
+        <line x1="460" y1="742" x2="460" y2="766" class="wfd-flow"/>
+
+        <!-- features -->
+        <rect x="235" y="770" width="450" height="58" rx="12" class="wfd-box"/>
+        <text x="460" y="793" text-anchor="middle" class="wfd-stage">STAGE 2 · FEATURE ENGINEERING</text>
+        <text x="460" y="816" text-anchor="middle" class="wfd-main" font-size="15">87 features — incl. human–cow interaction</text>
+
+        <line x1="460" y1="828" x2="460" y2="852" class="wfd-flow"/>
+
+        <!-- output -->
+        <rect x="235" y="856" width="450" height="58" rx="12" class="wfd-box wfd-answer"/>
+        <text x="460" y="879" text-anchor="middle" class="wfd-stage" fill="#046148">STAGE 3 · TRANSFORMER + MIL ATTENTION POOL</text>
+        <text x="460" y="902" text-anchor="middle" class="wfd-main" font-size="15">Clip verdict: AGGRESSION / NORMAL · attention weights</text>
+      </svg>
+
+      <!-- stacked mobile version -->
+      <div class="wf">
+        <div class="wf-node wf-io"><span class="wf-what">🎥 CCTV clip · sampled at 10 FPS</span></div>
+        <div class="wf-arrow"></div>
+        <div class="wf-node">
+          <span class="wf-stage">Stage 1 · Detection</span>
+          <span class="wf-what">Fine-tuned YOLO26l</span>
+          <span class="wf-how">person + cow boxes · conf 0.15</span>
+        </div>
+        <div class="wf-arrow"></div>
+        <div class="wf-lanes">
+          <div class="wf-lane wf-lane-visual">
+            <div class="wf-lane-title">Person stream · EfficientTAM</div>
+            <div class="wf-node"><span class="wf-what">Mask propagation</span><span class="wf-how">whole-clip single pass · memory bank</span></div>
+            <div class="wf-arrow"></div>
+            <div class="wf-node"><span class="wf-what">YOLO seed sweeps</span><span class="wf-how">every 30 frames + transient seeding</span></div>
+            <div class="wf-arrow"></div>
+            <div class="wf-node"><span class="wf-what">Pose — 17 COCO keypoints</span><span class="wf-how">attached to tracks by IoU &gt; 0.4</span></div>
+          </div>
+          <div class="wf-lane wf-lane-text">
+            <div class="wf-lane-title">Cow stream · ByteTrack</div>
+            <div class="wf-node"><span class="wf-what">ByteTrack IDs</span><span class="wf-how">Kalman prediction fills detection gaps</span></div>
+            <div class="wf-arrow"></div>
+            <div class="wf-node"><span class="wf-what">≥15-frame filter → cow tracks</span><span class="wf-how">63% per-frame recall → ~95% track-level</span></div>
+          </div>
+        </div>
+        <div class="wf-arrow"></div>
+        <div class="wf-node wf-io"><span class="wf-what">per-clip .pkl — tracks · keypoints · quality</span></div>
+        <div class="wf-arrow"></div>
+        <div class="wf-node">
+          <span class="wf-stage">Stage 2 · Feature Engineering</span>
+          <span class="wf-what">87 features / frame / track</span>
+          <span class="wf-how">kinematics · angles · posture · human–cow interaction</span>
+        </div>
+        <div class="wf-arrow"></div>
+        <div class="wf-node" style="border-color: rgba(4,120,87,0.6); background: rgba(5,150,105,0.08)">
+          <span class="wf-stage" style="color:#047857">Stage 3 · Transformer + MIL attention pool</span>
+          <span class="wf-what">Clip verdict: AGGRESSION / NORMAL + per-track attention</span>
+        </div>
+      </div>
+
+      <h3>The same pipeline on a real clip</h3>
+      <p>
         The strip below is <strong>one real frame from an aggression-labeled clip, at every stage of
         the pipeline</strong> — produced by a stage-wise debug notebook that runs the exact same
         functions as the production pipeline. A worker (yellow hoodie) is next to a cow at the
@@ -195,6 +393,32 @@
         All six panels are real pipeline output on a real clip (stage-wise helper notebook). Faces are
         not identifiable in the footage; camera names are the farm's internal pseudonyms.
       </p>
+
+      <h3>Watch it run</h3>
+      <p>
+        The stage animation below cycles that same frame through all six pipeline stages; the three
+        clips next to it play the pipeline's combined output — cow boxes, person track, and skeleton —
+        across frames sampled from each clip: two aggression-labeled clips and one normal clip for
+        contrast.
+      </p>
+      <figure class="cs-fig">
+        <video src="assets/herdwatch/video-pipeline-stages.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Animation cycling one CCTV frame through the six pipeline stages"></video>
+        <figcaption><strong>Pipeline stages, animated</strong> (real pipeline output) — one real frame cycling raw → detection → cow ByteTrack → person TAM → pose keypoints → combined. ~1.5s per stage.</figcaption>
+      </figure>
+      <div class="video-grid">
+        <figure class="cs-fig">
+          <video src="assets/herdwatch/video-clip-tail-aggression.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Combined pipeline output on a tail-aggression clip"></video>
+          <figcaption><strong>Aggression · tail</strong> — the worker's track and skeleton follow him along the holding-area gate. 8 frames sampled across the 18s clip, played as a timelapse.</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <video src="assets/herdwatch/video-clip-hardobject-aggression.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Combined pipeline output on a hard-object aggression clip in a crowded holding area"></video>
+          <figcaption><strong>Aggression · hard object</strong> — a packed holding area: 140 cow tracks this clip, one distant worker picked out by TAM + pose. 8 frames across 22s.</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <video src="assets/herdwatch/video-clip-normal.mp4" autoplay muted loop playsinline controls preload="metadata" aria-label="Combined pipeline output on a normal milking-parlor clip"></video>
+          <figcaption><strong>Normal</strong> — routine milking-parlor work, tracked the same way. This is what the classifier must <em>not</em> flag. 8 frames across 13s.</figcaption>
+        </figure>
+      </div>
 
       <p style="margin-top:18px">
         Downstream of the strip, every clip becomes a <code>.pkl</code> of person tracks (bboxes +
