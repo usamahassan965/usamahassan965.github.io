@@ -64,6 +64,14 @@
     .cs-figrow .cs-fig figcaption { margin-top: auto; padding-top: 10px; }
     .cs-fig .img-narrow { max-width: 160px; margin: 0 auto; }
     .cs-fig .img-grid { max-width: 280px; margin: 0 auto; }
+    .v3-strip { display: flex; align-items: center; gap: 12px; overflow-x: auto; padding: 18px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin: 18px 0 8px; }
+    .v3-stage { flex: 0 0 auto; text-align: center; }
+    .v3-stage img { display: block; border-radius: 6px; background: #fff; margin: 0 auto; }
+    .v3-stage .lbl { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--text-dim); margin-top: 8px; max-width: 190px; line-height: 1.5; }
+    .v3-stage .lbl strong { color: var(--text); }
+    .v3-arrow { flex: 0 0 auto; color: var(--accent); font-size: 1.5rem; font-weight: 700; }
+    .v3-verdict { background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-dim); text-align: left; line-height: 1.7; }
+    .v3-verdict .ans { color: #10b981; font-weight: 700; font-size: 1rem; }
     @media (max-width: 720px) { .cs-figrow { grid-template-columns: 1fr; } }
     .cs-story { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin: 14px 0; }
     .cs-story h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; color: var(--text); }
@@ -150,7 +158,7 @@
     <div class="cs-hero-inner">
       <a href="index.html#projects" class="cs-back">← Back to projects</a>
       <div class="project-header">
-        <span class="project-tag tag-live">CLIENT PROJECT · DELIVERED</span>
+        <span class="project-tag tag-live">CLIENT PROJECT · DEPLOYED</span>
         <span class="project-tag">Computer Vision + VLM</span>
       </div>
       <h1>GradeScan — AI Grading of <span class="gradient-text">Scanned Answer Sheets</span></h1>
@@ -369,6 +377,16 @@
         under 10%, so <code>argmax</code> is unambiguous. EasyOCR read the section header
         ("Questions 1 to 20") to switch between the two legacy layout variants automatically.
       </p>
+      <div class="cs-figrow">
+        <figure class="cs-fig">
+          <img src="assets/gradescan/v1-column-grid.png" class="img-narrow" alt="Version 1 input: the answer column cropped from a legacy sheet, 20 questions with options A to E" loading="lazy" />
+          <figcaption><strong>V1 input</strong> (real notebook output) — the answer column, cropped from the page at fixed offsets with <code>np.array_split</code>. Everything downstream assumed these pixel positions never move.</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <img src="assets/gradescan/v1-threshold-rows.png" alt="Version 1 processing: inverse-thresholded question rows where pencil marks appear as white blobs on black" loading="lazy" />
+          <figcaption><strong>V1 reading</strong> (real notebook output) — after inverse thresholding, pencil marks become white blobs; the marked option is simply the cell with the most white pixels. No model, pure counting.</figcaption>
+        </figure>
+      </div>
       <p>
         It worked — 20/20 on the sample sheets — but every coordinate was tuned to one specific PDF.
         The moment the client sent a new sheet design, everything broke. That was the trigger for
@@ -385,6 +403,16 @@
         filters became fractions of the page dimensions (e.g. width &gt; page_width/8.27) instead of
         absolute pixels, so rescaled and low-resolution scans pass the same filters.
       </p>
+      <div class="cs-figrow">
+        <figure class="cs-fig">
+          <img src="assets/gradescan/v2-contour-detect.png" class="img-grid" alt="Version 2 output: blue contour box automatically drawn around the Multiple Choice column of a test sheet" loading="lazy" />
+          <figcaption><strong>V2 structure detection</strong> (real notebook output) — the blue contour is found by shape, not position: a tall vertical box on the left half of the page. New sheet design, same code. (Test sheet; header cropped.)</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <img src="assets/gradescan/v2-choice-contour.png" class="img-grid" alt="Version 2 close-up: red contour drawn around the printed answer box inside a single question cell" loading="lazy" />
+          <figcaption><strong>V2 box localization</strong> (real notebook output) — inside each question cell, a second contour pass finds the printed answer box (red), so ink is measured inside the box instead of over an arbitrary crop.</figcaption>
+        </figure>
+      </div>
       <p>Two decision rules formalized the IN/BL flags from raw fill percentages:</p>
       <ul>
         <li><strong>Multi-choice (IN):</strong> two options whose fills are within 95% of each other and both clearly above the third → the student marked twice.</li>
@@ -397,6 +425,10 @@
         <code>ocrmypdf --deskew --rotate-pages</code> fixed slant <em>and</em> 180° flips in one
         pass, so it became a preprocessing stage rather than custom geometry code.
       </p>
+      <figure class="cs-fig">
+        <img src="assets/gradescan/v2-deskew-before-after.png" alt="Deskew test: a document rotated roughly 200 degrees on the left, and the same document corrected to upright on the right" loading="lazy" />
+        <figcaption><strong>Orientation correction under test</strong> (real notebook output) — a document rotated ~200° (left) and the corrected result (right). The hard part isn't the slant, it's knowing which way is up: minAreaRect recovers the angle but can't tell 0° from 180°, which is what pushed the pipeline to <code>ocrmypdf</code>'s OCR-confidence-based orientation.</figcaption>
+      </figure>
       <p>
         Handwriting was the other half. I first trained a MobileNetV3-Small on EMNIST-balanced
         (47 character classes) as a fully offline reader — it reached <strong>89.2% test
@@ -464,6 +496,33 @@
         <img src="assets/gradescan/yolo-dnd-row.png" alt="Option detector output on a real question row: five boxes detected, four labeled ND in red and the marked option labeled D in purple" loading="lazy" />
         <figcaption><strong>Option detector on a real question row</strong> (real notebook output) — all five boxes localized, the pencilled option classified D (darkened), the rest ND. The pipeline keeps only the box coordinates; the D/ND verdict is re-derived from ink fill inside each box.</figcaption>
       </figure>
+      <p style="margin-top:22px">The whole version-3 MCQ lane, one question at a glance:</p>
+      <div class="v3-strip">
+        <div class="v3-stage">
+          <img src="assets/gradescan/yolo-grid-detect-abcdef.png" style="height:190px" alt="Stage 1: YOLOv12 grid detection on the page" />
+          <div class="lbl"><strong>1 · Grid detect</strong><br>YOLOv12-m finds the MCQ grid on the raw page</div>
+        </div>
+        <div class="v3-arrow">→</div>
+        <div class="v3-stage">
+          <img src="assets/gradescan/v3-row-input.png" style="width:210px" alt="Stage 2: a single question row sliced from the grid" />
+          <div class="lbl"><strong>2 · Split 20 rows</strong><br><code>np.array_split</code> on the detected grid</div>
+        </div>
+        <div class="v3-arrow">→</div>
+        <div class="v3-stage">
+          <img src="assets/gradescan/yolo-dnd-row.png" style="width:250px" alt="Stage 3: YOLOv12 detects the five option boxes and labels them D or ND" />
+          <div class="lbl"><strong>3 · Box detect</strong><br>YOLOv12-m localizes all 5 option boxes (D/ND)</div>
+        </div>
+        <div class="v3-arrow">→</div>
+        <div class="v3-stage">
+          <div class="v3-verdict">
+            A 15.6% &nbsp;<span class="ans">B 86.4%</span><br>
+            C 31.4% &nbsp;D 37.2% &nbsp;E 33.7%<br>
+            <span class="ans">→ "B"</span>
+          </div>
+          <div class="lbl"><strong>4 · Fill-% verdict</strong><br>≥2 over 45% → IN · all under 45% → BL · else argmax</div>
+        </div>
+      </div>
+      <p style="font-size:0.82rem; color:var(--text-dim); margin-bottom:8px">Fill percentages above are the pipeline's actual debug output for question 1 of a real sample page. Total: ~0.2s per row, no API calls.</p>
 
       <h3>Output and performance</h3>
       <p>
@@ -486,7 +545,8 @@
         Before settling on the Gemini API, I evaluated Google Cloud Vision OCR and Vertex AI as
         handwriting readers — classic OCR mangled isolated handwritten characters, while the
         multimodal prompt approach could be told exactly what to look for and how to format it.
-        The delivered system was demoed to the client as an API with screen-recorded walkthroughs.
+        The system then shipped as a production Flask API on DigitalOcean — twelve deployed
+        versions, covered in section 04 below.
       </p>
     </section>
 
@@ -552,7 +612,36 @@
     </section>
 
     <section class="cs-section reveal">
-      <h2><span class="section-num">04</span> What I'd Build Next</h2>
+      <h2><span class="section-num">04</span> From Notebooks to Production — 12 API Versions</h2>
+      <p>
+        The notebook pipeline shipped to the client as a <strong>Flask API deployed on a DigitalOcean
+        droplet</strong>, and then kept evolving: twelve production versions between June and October
+        2025, each triggered by an operational problem rather than a modeling one.
+      </p>
+      <ul>
+        <li><strong>Async by design</strong> — <code>POST /analyze</code> accepts a PDF (or an object-storage file key) and returns immediately; a background worker (<code>ThreadPoolExecutor</code>, 2 concurrent jobs) does the heavy processing, and <code>GET /get_results</code> serves the finished JSON. A 780-page batch can't live inside one HTTP request timeout.</li>
+        <li><strong>Object-storage handoff (v5)</strong> — instead of uploading huge scan PDFs through the API, the client drops them in a DigitalOcean Spaces bucket and sends just the <code>FILE_KEY</code>; the app pulls the file via the S3-compatible <code>boto3</code> client.</li>
+        <li><strong>Whole-page VLM reading (v4)</strong> — cropping regions of interest for the handwriting lane was dropped entirely: the full page goes to Gemini, which locates the candidate number and responses itself. Less code, fewer failure points.</li>
+        <li><strong>Detector cascade + VLM arbiter (v10–12)</strong> — a second grid detector was trained for sheets where the candidate number is written in <em>blocks</em> (a format variant that shifts the page layout). If the primary detector fails — or a page comes back with more than 4 IN/BL answers, which almost always means the wrong detector ran — the app asks Gemini one cheap question: <em>"is the candidate number handwritten or printed?"</em> and reroutes the page to the matching detector. The pipeline validates its own output and self-corrects before flagging for manual review.</li>
+        <li><strong>Traceable outputs</strong> — every page image is renamed to its detected candidate number (<code>CAN##########.png</code>); pages where detection failed get an unmissable <code>err_*</code> name instead of silently disappearing.</li>
+        <li><strong>Ops packaging</strong> — gunicorn (gevent workers) behind nginx, a systemd unit for restarts, a Dockerfile pinning the awkward system deps (tesseract + OSD data, poppler, ghostscript), and written API docs + deployment steps so the client's team could run it without me.</li>
+      </ul>
+      <p>Choosing the production VLM was measured, not guessed — the same 10-page batch through four Gemini variants:</p>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Model</th><th>10-page batch</th><th>Per page</th><th>Reading quality</th></tr></thead>
+          <tbody>
+            <tr><td>gemini-2.5-pro</td><td>200.7s</td><td>~20.1s</td><td>Best</td></tr>
+            <tr><td><strong>gemini-2.5-flash</strong> (shipped)</td><td class="cs-hit">104.0s</td><td class="cs-hit">~10.4s</td><td>Near-pro at half the time</td></tr>
+            <tr><td>gemini-2.5-flash-lite</td><td>84.1s</td><td>~8.4s</td><td>Noticeably weaker</td></tr>
+            <tr><td>gemini-2.5-flash-preview-05-20</td><td>103.5s</td><td>~10.4s</td><td>Matched flash, superseded by GA</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="cs-section reveal">
+      <h2><span class="section-num">05</span> What I'd Build Next</h2>
       <ul>
         <li><strong>Parallel lanes + async Gemini batching</strong> — the MCQ and handwriting lanes are independent; running them concurrently and batching VLM calls should cut ~13.7s/page to under 5s.</li>
         <li><strong>Answer-key scoring &amp; reports</strong> — join extracted answers against a key to produce per-candidate scores, and export CSV/Excel report cards.</li>
