@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HerdWatch — Aggression Detection on Dairy-Farm CCTV | Usama — AI Engineer</title>
+  <meta name="description" content="HerdWatch engineering report: detecting aggressive worker behavior toward cattle from farm CCTV — YOLO26 detection, EfficientTAM person tracking, 17-keypoint pose, 87 handcrafted features per frame, and a Transformer with multi-instance-learning attention pooling. Built under NDA for a livestock-welfare client." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ---------- Project report page ---------- */
+    .cs-hero {
+      padding: 140px 24px 30px;
+      background:
+        radial-gradient(ellipse 60% 45% at 70% 15%, rgba(14, 165, 233, 0.12), transparent),
+        radial-gradient(ellipse 50% 40% at 25% 80%, rgba(139, 92, 246, 0.10), transparent);
+    }
+    .cs-hero-inner { max-width: 900px; margin: 0 auto; }
+    .cs-hero h1 { font-size: clamp(1.8rem, 4.5vw, 2.8rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin: 14px 0 16px; }
+    .cs-hero .hero-sub { max-width: 700px; }
+    .cs-section { max-width: 900px; margin: 0 auto; padding: 44px 24px; }
+    .cs-section h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 18px; letter-spacing: -0.01em; }
+    .cs-section h3 { font-size: 1.1rem; font-weight: 700; margin: 30px 0 12px; color: var(--text); }
+    .cs-section p, .cs-section li { color: var(--text-dim); font-size: 0.97rem; }
+    .cs-section ul, .cs-section ol { padding-left: 22px; display: grid; gap: 8px; margin: 12px 0; }
+    .cs-section strong { color: var(--text); }
+    .cs-section a { color: var(--accent); }
+
+    .cs-metrics { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
+    .cs-metric {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 22px; text-align: center; min-width: 110px;
+    }
+    .cs-metric .val { display: block; font-family: var(--mono); font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .cs-metric .lbl { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-top: 2px; }
+
+    .cs-table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--border); border-radius: var(--radius); }
+    table.cs-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: var(--bg-card); }
+    .cs-table th {
+      font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--accent); text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border);
+      background: rgba(14, 165, 233, 0.06); white-space: nowrap;
+    }
+    .cs-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: top; }
+    .cs-table tr:last-child td { border-bottom: none; }
+    .cs-table td strong { color: var(--text); }
+    .cs-hit { color: #059669; font-weight: 600; }
+    .cs-miss { color: #dc2626; font-weight: 600; }
+
+    .cs-quote {
+      border-left: 3px solid var(--accent); background: var(--bg-card);
+      border-radius: 0 var(--radius) var(--radius) 0; padding: 16px 20px; margin: 16px 0;
+      color: var(--text); font-size: 0.95rem;
+    }
+    .cs-quote cite { display: block; margin-top: 8px; font-style: normal; font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); }
+
+    .cs-fig { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin: 18px 0; }
+    .cs-fig img { display: block; width: 100%; height: auto; border-radius: 6px; background: #fff; }
+    .cs-fig figcaption { font-size: 0.82rem; color: var(--text-dim); margin-top: 10px; line-height: 1.55; }
+    .cs-figrow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; margin: 18px 0; }
+    .cs-figrow .cs-fig { margin: 0; display: flex; flex-direction: column; }
+    .cs-figrow .cs-fig figcaption { margin-top: auto; padding-top: 10px; }
+    .cs-fig .img-narrow { max-width: 440px; margin: 0 auto; }
+    .v3-strip { display: flex; align-items: center; gap: 12px; overflow-x: auto; padding: 18px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin: 18px 0 8px; }
+    .v3-stage { flex: 0 0 auto; text-align: center; }
+    .v3-stage img { display: block; border-radius: 6px; background: #fff; margin: 0 auto; }
+    .v3-stage .lbl { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--text-dim); margin-top: 8px; max-width: 250px; line-height: 1.5; }
+    .v3-stage .lbl strong { color: var(--text); }
+    .v3-arrow { flex: 0 0 auto; color: var(--accent); font-size: 1.5rem; font-weight: 700; }
+    @media (max-width: 720px) { .cs-figrow { grid-template-columns: 1fr; } }
+    .cs-story { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin: 14px 0; }
+    .cs-story h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+    .cs-story p { font-size: 0.92rem; margin-top: 10px; }
+    .cs-prob { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.06em; color: #b45309; }
+    .cs-sol { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.06em; color: #047857; }
+
+    .cs-back { display: inline-block; margin-bottom: 8px; font-family: var(--mono); font-size: 0.85rem; color: var(--accent); text-decoration: none; }
+    .cs-back:hover { text-decoration: underline; }
+
+    pre.cs-code {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 20px; overflow-x: auto; font-family: var(--mono); font-size: 0.8rem;
+      color: var(--text-dim); line-height: 1.6; margin: 14px 0;
+    }
+    pre.cs-code .k { color: var(--accent); }
+
+    /* training-curve SVG chart */
+    .curve-chart { width: 100%; height: auto; display: block; }
+    .cc-grid { stroke: var(--border); stroke-width: 1; }
+    .cc-axis { font-family: var(--mono); font-size: 11px; fill: var(--text-dim); }
+    .cc-v2 { stroke: #8b5cf6; stroke-width: 2.5; fill: none; }
+    .cc-v3 { stroke: #0ea5e9; stroke-width: 2.5; fill: none; }
+    .cc-label { font-family: var(--mono); font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">usama<span class="accent">.ai</span></a>
+      <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+      <ul class="nav-links">
+        <li><a href="index.html#about">About</a></li>
+        <li><a href="index.html#projects">Projects</a></li>
+        <li><a href="#workflow">Workflow</a></li>
+        <li><a href="#report">Report</a></li>
+        <li><a href="#problems">Problems</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <header class="cs-hero">
+    <div class="cs-hero-inner">
+      <a href="index.html#projects" class="cs-back">← Back to projects</a>
+      <div class="project-header">
+        <span class="project-tag tag-live">CLIENT PROJECT · UNDER NDA</span>
+        <span class="project-tag">Video Understanding + Temporal ML</span>
+      </div>
+      <h1>HerdWatch — Detecting <span class="gradient-text">Aggressive Behavior</span> on Dairy-Farm CCTV</h1>
+      <p class="hero-sub">
+        An end-to-end video-understanding pipeline that watches farm CCTV and flags aggressive
+        behavior by workers toward cattle: <strong>YOLO26 detection → mask-propagation person
+        tracking (EfficientTAM) → 17-keypoint pose → 87 handcrafted features per frame → a
+        Transformer with multi-instance-learning attention pooling</strong>. Built under NDA for a
+        livestock-welfare client on <strong>2,848 labeled clips from 151 real CCTV videos</strong>,
+        trained entirely on interruptible cloud GPUs. Milestone 1 (binary aggression detection)
+        delivered; multi-class and deployment milestones in progress.
+      </p>
+      <div class="pipeline" style="margin-top:26px">
+        <span class="stage">Detection</span>
+        <span class="stage">TAM Tracking</span>
+        <span class="stage">Pose Keypoints</span>
+        <span class="stage">87-D Features</span>
+        <span class="stage">MIL Transformer</span>
+        <span class="stage">Clip Verdict</span>
+      </div>
+      <div class="cs-metrics">
+        <div class="cs-metric"><span class="val">0.93</span><span class="lbl">F1 aggression · test</span></div>
+        <div class="cs-metric"><span class="val">92.6%</span><span class="lbl">pipeline accuracy</span></div>
+        <div class="cs-metric"><span class="val">2,848</span><span class="lbl">labeled clips</span></div>
+        <div class="cs-metric"><span class="val">7,095</span><span class="lbl">person tracks</span></div>
+        <div class="cs-metric"><span class="val">87</span><span class="lbl">features / frame</span></div>
+      </div>
+      <div class="project-links" style="margin-top:28px">
+        <a href="#workflow" class="link-btn">See the Workflow ↓</a>
+        <a href="#report" class="link-btn">Read the Report ↓</a>
+        <a href="#problems" class="link-btn">Problems I Faced ↓</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="workflow" class="cs-section reveal">
+      <h2><span class="section-num">01</span> System Workflow</h2>
+      <p>
+        The strip below is <strong>one real frame from an aggression-labeled clip, at every stage of
+        the pipeline</strong> — produced by a stage-wise debug notebook that runs the exact same
+        functions as the production pipeline. A worker (yellow hoodie) is next to a cow at the
+        holding-area gate; the clip is labeled <code>aggression_type = "tail"</code>.
+      </p>
+
+      <div class="v3-strip">
+        <div class="v3-stage">
+          <img src="assets/herdwatch/stage-1-raw.jpg" alt="Raw CCTV frame: a dairy-farm holding area with cows and a worker in a yellow hoodie" style="height:150px" loading="eager" />
+          <div class="lbl"><strong>1 · Raw CCTV frame</strong><br/>sampled at 10 FPS</div>
+        </div>
+        <div class="v3-arrow">→</div>
+        <div class="v3-stage">
+          <img src="assets/herdwatch/stage-2-detect.jpg" alt="Same frame with YOLO26 detections: person 0.95 in green, cows 0.72 to 0.96 in orange" style="height:150px" loading="eager" />
+          <div class="lbl"><strong>2 · YOLO26l detection</strong><br/>person 0.95 · cows 0.72–0.96</div>
+        </div>
+        <div class="v3-arrow">→</div>
+        <div class="v3-stage">
+          <img src="assets/herdwatch/stage-3-cow-bytetrack.jpg" alt="Same frame with ByteTrack cow IDs C1, C50, C3 drawn on cow boxes" style="height:150px" loading="eager" />
+          <div class="lbl"><strong>3 · Cow tracking</strong><br/>ByteTrack IDs (C1, C50, …)</div>
+        </div>
+        <div class="v3-arrow">→</div>
+        <div class="v3-stage">
+          <img src="assets/herdwatch/stage-4-person-tam.jpg" alt="Same frame with the EfficientTAM person track box on the worker" style="height:150px" loading="eager" />
+          <div class="lbl"><strong>4 · Person tracking</strong><br/>EfficientTAM mask propagation</div>
+        </div>
+        <div class="v3-arrow">→</div>
+        <div class="v3-stage">
+          <img src="assets/herdwatch/stage-5-pose.jpg" alt="Same frame with a 17-keypoint yellow skeleton drawn on the worker" style="height:150px" loading="eager" />
+          <div class="lbl"><strong>5 · Pose estimation</strong><br/>17 COCO keypoints</div>
+        </div>
+        <div class="v3-arrow">→</div>
+        <div class="v3-stage">
+          <img src="assets/herdwatch/stage-6-combined.jpg" alt="Same frame with cow boxes, person track and skeleton combined" style="height:150px" loading="eager" />
+          <div class="lbl"><strong>6 · Combined output</strong><br/>→ per-clip <code>.pkl</code> → features → MIL</div>
+        </div>
+      </div>
+      <p style="font-size:0.82rem; margin-top:6px;">
+        All six panels are real pipeline output on a real clip (stage-wise helper notebook). Faces are
+        not identifiable in the footage; camera names are the farm's internal pseudonyms.
+      </p>
+
+      <p style="margin-top:18px">
+        Downstream of the strip, every clip becomes a <code>.pkl</code> of person tracks (bboxes +
+        keypoints) and cow tracks (bboxes). Feature engineering turns each person track into an
+        <strong>(T × 87)</strong> sequence — kinematics (28), joint angles (9), posture (12),
+        <strong>human–cow interaction (16)</strong>, movement direction (6), asymmetry (6), temporal
+        dynamics (6), confidence/validity (4). A Transformer encoder embeds each track, an attention
+        pool aggregates all tracks in the clip into one embedding, and a classifier head emits the
+        clip-level aggression verdict.
+      </p>
+    </section>
+
+    <section id="report" class="cs-section reveal">
+      <h2><span class="section-num">02</span> Engineering Report — Four Phases, Rebuilt Where It Broke</h2>
+      <p>
+        The pipeline has four phases — detection training, tracking + pose, feature engineering,
+        temporal classification — and three of the four had to be fundamentally rebuilt after their
+        first version met real data. Every rebuild below is documented in the project's version-history
+        notes, and every number comes from a real run.
+      </p>
+
+      <h3>Phase 1 — Detection: train the detector you can actually resume</h3>
+      <p>
+        A YOLO26l cow/person detector was fine-tuned on <strong>41,532 CCTV images</strong>
+        (1.11M cow instances, 45K person instances) at 960px for 120 epochs. The first prototype used
+        a flat random split — frames from the same video landed in both train and val, inflating
+        metrics — so the production run switched to <strong>video-level splits</strong>: every frame
+        of any one video goes to exactly one split. Three architectures were trained and compared on
+        the same data before committing:
+      </p>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Model</th><th>Recipe</th><th>mAP@0.5</th><th>mAP@0.5:0.95</th><th>Verdict</th></tr></thead>
+          <tbody>
+            <tr><td><strong>YOLO26l @ 960px</strong></td><td>120 epochs, mosaic + mixup + copy-paste</td><td class="cs-hit">0.783</td><td class="cs-hit">0.591</td><td><strong>Shipped</strong></td></tr>
+            <tr><td>YOLO26l progressive resizing</td><td>640→960→1280px, 3 phases</td><td>0.756</td><td>0.532</td><td>Resolution jumps destabilized training</td></tr>
+            <tr><td>RT-DETRv2-l @ 960px</td><td>Transformer detector, NMS-free</td><td colspan="2">trained for comparison</td><td>Not adopted</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The honest number behind the headline: per-frame cow recall is only <strong>63%</strong> —
+        cows in a packed holding area occlude each other constantly. The design answer was to stop
+        chasing per-frame recall and let <strong>tracking compensate</strong>: ByteTrack's Kalman
+        prediction fills detection gaps, lifting effective cow coverage to ~95% at track level
+        (~99% for persons, from 80% per-frame).
+      </p>
+      <div class="cs-figrow">
+        <figure class="cs-fig">
+          <img src="assets/herdwatch/yolo-training-curves.png" alt="YOLO26l training curves for the final epochs: losses decreasing, mAP50-95 rising to 0.591" loading="lazy" />
+          <figcaption><strong>Detector training curves</strong> (real training output, final 14 of 120 epochs) — box/cls/dfl losses still falling, mAP@0.5:0.95 climbing to 0.591. The model plateaued: epochs 40→120 bought only +0.006 mAP.</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <img src="assets/herdwatch/yolo-confusion-matrix.png" alt="Normalized confusion matrix: cow 0.63, person 0.80, with background confusion" loading="lazy" />
+          <figcaption><strong>Normalized confusion matrix</strong> (real training output) — cow 0.63 / person 0.80 per-frame recall. The 0.37 cow→background column is occlusion in packed pens; tracking recovers it at clip level.</figcaption>
+        </figure>
+      </div>
+
+      <h3>Phase 2 — Tracking: ByteTrack fragmented, TAM held</h3>
+      <p>
+        Tracking is where the project nearly stalled. Stock ByteTrack shattered person tracks on
+        every brief occlusion: median track continuity <strong>0.14</strong>, and downstream, a median
+        <strong>64% of feature values were NaN</strong> per clip — only <strong>107 of 877 clips</strong>
+        survived the training filter. Six data-hygiene fixes (longer minimum track lengths, stricter
+        pose-to-track IoU, label typo cleaning, a phantom-clip skip branch) collapsed the outliers but
+        left the median NaN ratio unchanged, because the audit showed the root cause was
+        <em>ByteTrack-internal</em>:
+      </p>
+      <div class="cs-quote">
+        "Diagnostic showed root cause was ByteTrack-internal fragmentation — 44% of multi-track clips
+        had the structural signature of 'same person, ID reset mid-clip.' Threshold tuning alone could
+        not fix this."
+        <cite>— VERSION_HISTORY.md, Phase 1.2 v2 → v3 decision</cite>
+      </div>
+      <p>
+        Version 3 replaced ByteTrack with <strong>EfficientTAM</strong> (a distilled SAM2) for person
+        tracks only: mask propagation with a memory bank maintains identity straight through occlusion
+        and motion blur. Cows deliberately stayed on ByteTrack — cow features are aggregate, so cow ID
+        stability matters less, and running TAM on ~130 cow objects per clip would waste VRAM. Each
+        clip is loaded fully into RAM (1.3 GB worst case) and propagated in a single pass, because
+        chunking would re-introduce fragmentation at chunk boundaries; new persons are seeded from
+        YOLO boxes every 30 frames plus transient per-5-frame sweeps.
+      </p>
+
+      <h3>Phase 3 — Features: stop picking a "primary person"</h3>
+      <p>
+        The first feature-engineering version selected one "primary" person per clip (the longest
+        track) and extracted an 87-dimensional feature sequence for them — and if the picker chose a
+        bystander, or the primary's track was fragmented, the labeled aggression sat in a discarded
+        track and the clip's features were mostly NaN. <strong>86.9% of clips were being dropped.</strong>
+        The v2 rewrite made <em>every viable track</em> a first-class sample: the real production run
+        processed <strong>906 clips into 7,095 person tracks</strong> (mean 7.8 per clip), each with its
+        own (T × 87) tensor, its own NaN-ratio filter, and video-grouped train/val/test splits so no
+        video leaks across splits.
+      </p>
+
+      <h3>Phase 4 — Classification: from max-pool heuristic to multi-instance learning</h3>
+      <p>
+        With per-track samples, the label question becomes: what is a <em>track's</em> label when only
+        the <em>clip</em> is labeled? Version 2 propagated the clip label to every track — bystanders
+        in aggressive clips train as aggressive (accepted label noise) — and max-pooled track
+        predictions at inference. Version 3 answered it properly with
+        <strong>multi-instance learning</strong> (attention pooling, Ilse et al. 2018): the clip is a
+        bag of tracks, a small MLP scores each track, softmax attention pools track embeddings into a
+        clip embedding, and BCE loss only ever sees the clip-level prediction. The model is free to
+        score bystanders low without penalty. Both were trained on identical data with pinned seeds —
+        a true A/B:
+      </p>
+      <div class="cs-table-wrap">
+        <table class="cs-table">
+          <thead><tr><th>Model (test set, 56 clips)</th><th>Accuracy</th><th>Macro F1</th><th>F1 aggression</th><th>Recall aggr.</th><th>Pipeline accuracy*</th></tr></thead>
+          <tbody>
+            <tr><td>v2 per-track + max-pool (run 1)</td><td>0.857</td><td>0.757</td><td>0.913</td><td>0.913</td><td>0.901</td></tr>
+            <tr><td>v2 stronger regularization (run 2)</td><td>0.857</td><td>0.788</td><td>0.909</td><td>0.870</td><td>0.901</td></tr>
+            <tr><td><strong>v3 MIL attention pooling</strong></td><td class="cs-hit">0.893</td><td class="cs-hit">0.817</td><td class="cs-hit">0.935</td><td class="cs-hit">0.935</td><td class="cs-hit">0.926</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:0.82rem">
+        *Pipeline accuracy counts clips the tracker skipped as no-person (all genuinely normal) —
+        the number the deployed system would produce. All values from the runs' <code>eval_results.json</code>.
+      </p>
+      <div class="cs-figrow">
+        <figure class="cs-fig">
+          <img src="assets/herdwatch/mil-test-metrics.png" alt="MIL model test metrics printout: accuracy 0.8929, f1_macro 0.8174, f1_aggression 0.9348" loading="lazy" />
+          <figcaption><strong>MIL test metrics</strong> (real notebook output) — clip-level accuracy 0.893, macro-F1 0.817, aggression F1/precision/recall all 0.935.</figcaption>
+        </figure>
+        <figure class="cs-fig">
+          <img src="assets/herdwatch/mil-classification-report.png" alt="Per-clip classification report: aggression precision 0.93 recall 0.93, normal 0.70/0.70, 56 test clips" loading="lazy" />
+          <figcaption><strong>Per-clip classification report</strong> (real notebook output) — 46 aggression / 10 normal test clips. The model-only normal-class numbers look modest because the test slice is aggression-heavy; the pipeline-level view (tracker-skipped clips included) restores balance.</figcaption>
+        </figure>
+      </div>
+
+      <figure class="cs-fig">
+        <svg class="curve-chart" viewBox="0 0 720 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Validation clip-level macro F1 per epoch for v2 max-pool and v3 MIL">
+          <line x1="50" y1="30" x2="690" y2="30" class="cc-grid"/><text x="44" y="34" text-anchor="end" class="cc-axis">0.75</text>
+          <line x1="50" y1="73.3" x2="690" y2="73.3" class="cc-grid"/><text x="44" y="77" text-anchor="end" class="cc-axis">0.70</text>
+          <line x1="50" y1="116.7" x2="690" y2="116.7" class="cc-grid"/><text x="44" y="120" text-anchor="end" class="cc-axis">0.65</text>
+          <line x1="50" y1="160" x2="690" y2="160" class="cc-grid"/><text x="44" y="164" text-anchor="end" class="cc-axis">0.60</text>
+          <line x1="50" y1="203.3" x2="690" y2="203.3" class="cc-grid"/><text x="44" y="207" text-anchor="end" class="cc-axis">0.55</text>
+          <line x1="50" y1="246.7" x2="690" y2="246.7" class="cc-grid"/><text x="44" y="250" text-anchor="end" class="cc-axis">0.50</text>
+          <line x1="50" y1="290" x2="690" y2="290" class="cc-grid"/><text x="44" y="294" text-anchor="end" class="cc-axis">0.45</text>
+          <text x="50" y="312" class="cc-axis">epoch 1</text>
+          <text x="690" y="312" text-anchor="end" class="cc-axis">epoch 18</text>
+          <polyline class="cc-v2" points="50.0,121.9 87.6,95.9 125.3,108.9 162.9,108.9 200.6,94.1 238.2,82.9 275.9,82.9 313.5,62.1 351.2,148.7 388.8,100.2 426.5,108.9 464.1,156.5 501.8,152.2 539.4,163.5 577.1,128.8 614.7,118.4 652.4,82.0 690.0,108.0"/>
+          <polyline class="cc-v3" points="50.0,262.3 87.6,133.1 125.3,130.5 162.9,156.5 200.6,118.4 238.2,91.5 275.9,75.1 313.5,82.9 351.2,121.0 388.8,94.1 426.5,82.9 464.1,125.3 501.8,121.0 539.4,113.2 577.1,113.2 614.7,95.9 652.4,108.0"/>
+          <circle cx="313.5" cy="62.1" r="5" fill="#8b5cf6"/>
+          <circle cx="275.9" cy="75.1" r="5" fill="#0ea5e9"/>
+          <text x="322" y="58" class="cc-label" fill="#8b5cf6">v2 best 0.713 (e8)</text>
+          <text x="284" y="100" class="cc-label" fill="#0ea5e9">v3 best 0.698 (e7)</text>
+          <text x="560" y="60" class="cc-label" fill="#8b5cf6">— v2 max-pool</text>
+          <text x="560" y="80" class="cc-label" fill="#0ea5e9">— v3 MIL</text>
+        </svg>
+        <figcaption><strong>Validation clip-level macro-F1 per epoch</strong> — drawn from the two runs' real <code>training_history.json</code>. v2 peaks slightly higher on val, but v3 MIL generalizes better where it counts: on test, MIL wins every clip-level metric (0.817 vs 0.757 macro-F1). Early stopping picked epoch 8 (v2) and epoch 7 (v3).</figcaption>
+      </figure>
+    </section>
+
+    <section id="problems" class="cs-section reveal">
+      <h2><span class="section-num">03</span> Problems I Faced</h2>
+
+      <div class="cs-story">
+        <h4>1 · Track fragmentation destroyed 88% of the training data</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> ByteTrack split one physical person into multiple track IDs whenever a 1–3 second occlusion, motion blur, or partial exit killed the track. The feature stage then picked the longest fragment — and the labeled aggression event often sat in a discarded fragment, leaving the surviving feature vector mostly NaN. Measured: median track continuity 0.14, median feature-NaN ratio 0.64, and only 107 of 877 clips surviving the training filter — a 25× drop from target.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Attack the root cause, not the thresholds. An audit showed 44% of multi-track clips had the "same person, ID reset mid-clip" signature — no ByteTrack parameter could fix that. Switched person tracking to EfficientTAM mask propagation, whose memory bank carries identity through occlusion, and processed each clip in a single whole-clip pass so chunk boundaries couldn't re-fragment tracks. Combined with per-track feature extraction, the surviving dataset went from 107 clips to 7,095 tracks across 906 clips.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>2 · Free GPUs, hostile constraints: 12-hour ceilings and no bfloat16</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> The compute budget was interruptible SaladCloud nodes and Kaggle sessions (12-hour hard ceiling, P100/T4 GPUs). EfficientTAM's source has hard-coded <code>bfloat16</code> casts — pre-Ampere GPUs have no bf16 kernels and crash mid-propagation. And a full tracking run needs ~1,400 clips at 80–150 clips per session.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Resume infrastructure everywhere: detector training auto-saves every epoch and resumes from cloud-storage checkpoints (a background sync every 3 minutes survives node kills); the tracking notebook packages finished clips into a resume bundle that the next Kaggle session mounts as a dataset — the full run completed across 10–18 sessions. For the GPU mismatch, four monkey-patches convert every bf16 cast into a no-op on pre-Ampere GPUs only (fp32 throughout), leaving A100 behavior untouched.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>3 · Suspected memory leak — disproved with instrumentation, fixed with a cap</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> Long tracking sessions died with out-of-memory errors, looking exactly like a cumulative leak: RAM climbing clip after clip until the session was killed.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Instrument before fixing: per-clip <code>psutil</code> RAM logging showed drift under 0.2 GB/clip on average — <em>no leak</em>. The real cause was per-clip intrinsic peaks: two clips in the dataset are 1,408s and 1,361s long — ~14,000 frames at whole-clip TAM load exceeds Kaggle's 16 GB RAM on their own. A <code>SKIP_DURATION_ABOVE_SEC = 600</code> cap dropped exactly those two clips: 0.07% of the dataset traded for run stability, and the skip writes no output so it's reversible if the cap is ever raised.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>4 · TAM's fix created a new bug: duplicate IDs for the same person</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> With fragmentation gone, mean persons-per-clip read 8.8 — on a farm where most clips have one or two workers. A measured audit over 80 clips: 60% of within-clip track pairs overlapped at IoU &gt; 0.5, and 24% were virtually identical (IoU &gt; 0.9). Root cause: when partial occlusion shrinks a TAM mask, a fresh YOLO box for the same person fails the seed-dedup IoU check → a duplicate ID is seeded for a person already being tracked.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> A stage-wise visual helper confirmed the duplicates are <em>self</em>-duplicates of one person (see figure), not mislabeled bystanders — so under max-pool/attention aggregation they're benign for correctness, and video-grouped splits keep duplicates out of train/test leakage. Rather than a 3-day tracking re-run, the cheap mitigations shipped first: per-clip loss weighting (each clip contributes equal total loss regardless of track count) plus <code>pos_weight</code> to counter the 68%-positive skew duplicates induce. A union-find IoU-merge dedup pass is designed and held in reserve — measured, documented, not yet needed.</p>
+        <div class="cs-figrow">
+          <figure class="cs-fig">
+            <img src="assets/herdwatch/duplicate-tracks-p2-p3.jpg" class="img-narrow" alt="Milking parlor CCTV crop with two overlapping track boxes P2 and P3 on the same distant worker" loading="lazy" />
+            <figcaption><strong>The duplicate-seed bug, caught on camera</strong> (real pipeline output) — track IDs P2 and P3 are the same distant worker in a milking parlor, double-seeded after a mask shrink. This frame is from the debug notebook that settled the "duplicates vs real people" question.</figcaption>
+          </figure>
+          <figure class="cs-fig">
+            <img src="assets/herdwatch/crowded-holding-area.jpg" alt="Packed holding area with dozens of tracked cow boxes and one skeletal-overlaid worker at the far gate" loading="lazy" />
+            <figcaption><strong>Why cows stay on ByteTrack</strong> (real pipeline output) — this holding-area clip produced 140 cow tracks; the worker (top right, skeleton overlay, also duplicate-boxed P0/P1) is the only TAM target. Mask-propagating ~130 cows per clip would burn VRAM for features that only need aggregate cow positions.</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="cs-story">
+        <h4>5 · The split was balanced by count — and 84% positive by label</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> Train/val/test splits were video-grouped (correct, prevents leakage) and count-balanced — but nobody told the label distribution: the validation split came out 84% aggressive and the test split 49%, making validation F1 meaningless as an early-stopping signal.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Label-stratified group splitting: still video-grouped, but stratified on clip labels, bringing every split to ≈61% positive — matching the processed population. Early stopping on val macro-F1 became trustworthy, and the v2-vs-v3 A/B comparison inherited comparable splits.</p>
+      </div>
+
+      <div class="cs-story">
+        <h4>6 · Bystanders trained as aggressors — label noise by construction</h4>
+        <p><strong class="cs-prob">PROBLEM —</strong> Per-track training needs per-track labels, but only clip labels exist. Propagating the clip label means a calm bystander in an aggressive clip trains as <code>label=1</code> — systematic label noise on exactly the positive class, and with duplicate tracks it multiplies.</p>
+        <p><strong class="cs-sol">SOLUTION —</strong> Multi-instance learning: the clip is a bag of its tracks, attention pooling aggregates track embeddings, and loss touches only the clip-level output — the model can score bystanders near zero without being penalized. On the held-out test set MIL beat tuned max-pool on every clip-level metric (macro-F1 0.817 vs 0.788, aggression recall 0.935 vs 0.870) and its attention weights double as a diagnostic: they show <em>which track</em> the model blamed, a step toward the aggressor-identification milestone.</p>
+      </div>
+    </section>
+
+    <section class="cs-section reveal">
+      <h2><span class="section-num">04</span> Training Infrastructure — Interruptible GPUs, Resumable Everything</h2>
+      <p>
+        There was no dedicated GPU box on this project — every heavy job ran on hardware that could
+        disappear mid-epoch. That constraint shaped the engineering as much as the models did:
+      </p>
+      <ul>
+        <li><strong>Dockerized detector training on interruptible cloud GPUs</strong> — RTX 4090/3090 nodes at $0.09–0.16/hr. The training container resumes from the latest checkpoint automatically when a node is reclaimed; configuration comes in via environment variables (no secrets in code or image).</li>
+        <li><strong>Cloud checkpoint store (Cloudflare R2, S3-compatible)</strong> — a background sync pushes weights and logs every 3 minutes, so the most a node kill can cost is minutes, not hours. Free-tier storage; boto3 client.</li>
+        <li><strong>Kaggle multi-session orchestration</strong> — the tracking phase processes ~1,400 clips at 80–150 per 12-hour session. Finished clips ship as a resume bundle (zip → Kaggle dataset → mounted next session); a backend-mismatch assertion refuses to mix ByteTrack-era outputs into a TAM run.</li>
+        <li><strong>A 50-clip quality gate</strong> — after the first 50 clips of any tracking run: median persons ≤ 4, track continuity ≥ 0.40, wall-clock ≤ 15s/clip. Fail any → stop and switch tracker backend instead of burning 11 more hours on a failing configuration. Three TAM-family backends (EfficientTAM / SAMURAI / SAM 2.1) ship in the same notebook, switchable by uncommenting one block.</li>
+        <li><strong>Version discipline</strong> — every significant logic change gets a new notebook file; originals stay byte-identical. The repo carries a VERSION_HISTORY of what changed and why, and a FUTURE_MODIFICATIONS decision tree of pre-planned responses ("if the TAM bundle still fragments → SAMURAI; if long clips OOM → tiered FPS") so mid-run surprises had answers written down before they happened.</li>
+      </ul>
+    </section>
+
+    <section class="cs-section reveal">
+      <h2><span class="section-num">05</span> What I'd Build Next</h2>
+      <p>These are the project's actual next milestones and the pre-planned escalations from its decision-tree docs:</p>
+      <ul>
+        <li><strong>Multi-class aggression typing (Milestone 2)</strong> — the metadata already carries a 5-class mapping (hard object / belt / tail / kicking / normal); the MIL head swaps sigmoid for softmax with weighted CE for the imbalanced classes.</li>
+        <li><strong>Two-stream fusion</strong> — concatenate DINOv2/CLIP visual embeddings of person crops with the skeleton features, then cross-attention fusion: posture says "arm raised," pixels say "holding a stick."</li>
+        <li><strong>Aggressor identification head</strong> — MIL attention weights already point at the suspicious track; a supervised head on top would name the aggressor, not just the clip.</li>
+        <li><strong>Cross-track attention</strong> — let each track's encoder attend to other tracks in the same clip before pooling, capturing person-person interaction the current bag model ignores.</li>
+        <li><strong>Deployment milestone (M3)</strong> — ONNX/TensorRT export, skip-frame inference, cross-farm domain evaluation, and an alert dashboard with human-in-the-loop review of flagged clips.</li>
+      </ul>
+      <div class="project-links" style="margin-top:34px">
+        <a href="#workflow" class="link-btn">Back to the Workflow ↑</a>
+        <a href="index.html#projects" class="link-btn">← All Projects</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Usama · Built with plain HTML/CSS — no framework needed.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
